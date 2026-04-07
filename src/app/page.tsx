@@ -1,0 +1,833 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { 
+  Book, 
+  Search, 
+  Bell, 
+  User, 
+  LayoutDashboard, 
+  Library, 
+  SquarePen, 
+  Settings, 
+  Trophy,
+  ChevronRight,
+  TrendingUp,
+  X,
+  Star,
+  Edit2,
+  Users,
+  CheckCircle2,
+  XCircle,
+  Menu,
+  Lock
+} from "lucide-react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import { saveReadingReport, generateBookAIStuff, fetchReadingReports, searchAladinBooks, validatePassword } from "./actions";
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// --- Components ---
+
+const SidebarItem = ({ icon: Icon, label, active = false, onClick, mobile = false }: { icon: any, label: string, active?: boolean, onClick?: () => void, mobile?: boolean }) => (
+  <div 
+    onClick={onClick}
+    className={cn(
+        "flex flex-col lg:flex-row items-center gap-1 lg:gap-3 px-2 py-2 lg:px-4 lg:py-3 rounded-2xl lg:rounded-xl cursor-pointer transition-all duration-300 transform active:scale-95 group",
+        active ? "bg-primary text-white shadow-lg lg:shadow-md font-bold" : "text-olive/70 hover:bg-olive/10",
+        mobile && "flex-1"
+    )}
+  >
+    <Icon size={mobile ? 22 : 20} className={cn("transition-transform group-hover:scale-110", active && "animate-bounce-short")} />
+    <span className={cn("font-bold text-[10px] lg:text-sm lg:font-medium whitespace-nowrap")}>{label}</span>
+  </div>
+);
+
+const Card = ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
+  <div 
+    onClick={onClick}
+    className={cn("bg-white rounded-[2rem] p-6 shadow-sm border border-olive/5", className)}
+  >
+    {children}
+  </div>
+);
+
+const StatCard = ({ title, value, icon: Icon, color, onClick }: { title: string, value: string, icon: any, color: string, onClick?: () => void }) => (
+  <Card 
+    className={cn(
+      "flex items-center gap-4 hover:shadow-xl transition-all duration-300",
+      onClick && "cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
+    )}
+    onClick={onClick}
+  >
+    <div className={cn("p-4 rounded-2xl text-white shadow-inner transform -rotate-3", color)}>
+      <Icon size={24} />
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-[10px] text-olive/50 font-black uppercase tracking-widest mb-0.5 truncate">{title}</p>
+      <p className="text-2xl font-black text-text-main leading-tight truncate">{value}</p>
+    </div>
+  </Card>
+);
+
+const BookCard = ({ title, author, progress, image }: { title: string, author: string, progress: number, image?: string }) => (
+  <div className="flex flex-col gap-3 group cursor-pointer h-full">
+    <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-olive/10 shadow-sm group-hover:shadow-2xl transition-all duration-500 transform group-hover:-translate-y-2">
+      {image ? (
+          <img src={image} alt={title} className="object-cover w-full h-full scale-100 group-hover:scale-110 transition-transform duration-700" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-olive/30 bg-white/50">
+          <Book size={48} />
+        </div>
+      )}
+      <div className="absolute inset-x-4 bottom-4 h-1.5 bg-black/10 backdrop-blur-md rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-accent transition-all duration-1500 ease-out" 
+          style={{ width: `${progress}%` }} 
+        />
+      </div>
+    </div>
+    <div className="px-1">
+      <h3 className="font-black text-text-main text-sm lg:text-base truncate leading-tight mb-0.5 lg:mb-1 group-hover:text-primary transition-colors">{title}</h3>
+      <p className="text-xs lg:text-sm text-olive/60 font-medium truncate">{author}</p>
+    </div>
+  </div>
+);
+
+// --- Main Page ---
+
+export default function DashboardPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [bookResults, setBookResults] = useState<any[]>([]);
+  const [isSearchingBook, setIsSearchingBook] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiCoach, setAICoach] = useState<{ quizzes: any[], guides: string[] } | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
+  const [libraryData, setLibraryData] = useState<any[]>([]);
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [filterWriter, setFilterWriter] = useState<string | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [authError, setAuthError] = useState(false);
+
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    writer: "민준",
+    title: "",
+    author: "",
+    thumbnail: "",
+    content: "",
+    rating: 5,
+    summary: "",
+    quote: "",
+    quizScore: "",
+    memo: "",
+    originalTitle: "",
+    originalWriter: "",
+    bookDescription: ""
+  });
+
+  // Calculate real-time stats
+  const totalReportsCount = libraryData.length;
+  const minjunCount = libraryData.filter(r => (r["작성자"] || "").includes("민준")).length;
+  const yujunCount = libraryData.filter(r => (r["작성자"] || "").includes("유준")).length;
+
+  const filteredLibraryData = (filterWriter 
+    ? libraryData.filter(r => (r["작성자"] || "").includes(filterWriter))
+    : [...libraryData]).sort((a, b) => {
+      const dateA = new Date(a["날짜"]).getTime();
+      const dateB = new Date(b["날짜"]).getTime();
+      return dateB - dateA;
+    });
+
+  useEffect(() => {
+    const auth = localStorage.getItem('reading_journal_auth');
+    if (auth === 'true') {
+      setIsAuthorized(true);
+      loadData();
+    } else {
+      setIsAuthorized(false);
+      setIsDataLoading(false);
+    }
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setAuthError(false);
+    const res = await validatePassword(passwordInput);
+    if (res.success) {
+      localStorage.setItem('reading_journal_auth', 'true');
+      setIsAuthorized(true);
+      loadData();
+    } else {
+      setAuthError(true);
+    }
+    setIsLoading(false);
+  };
+
+  const loadData = async () => {
+    setIsDataLoading(true);
+    const res = await fetchReadingReports();
+    if (res.success) {
+      setLibraryData(res.data);
+    }
+    setIsDataLoading(false);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setAICoach(null);
+    setQuizAnswers([]);
+    setBookResults([]);
+    setFormData({
+        date: new Date().toISOString().split('T')[0],
+        writer: "민준",
+        title: "",
+        author: "",
+        thumbnail: "",
+        content: "",
+        rating: 5,
+        summary: "",
+        quote: "",
+        quizScore: "",
+        memo: "",
+        originalTitle: "",
+        originalWriter: "",
+        bookDescription: ""
+    });
+  };
+
+  const handleOpenLibrary = async (writer?: string) => {
+     setFilterWriter(writer || null);
+     setIsLibraryOpen(true);
+     loadData();
+  };
+
+  const handleEditReport = (report: any) => {
+     const getVal = (keyStr: string) => {
+        const actualKey = Object.keys(report).find(k => k.includes(keyStr));
+        return actualKey ? report[actualKey] : "";
+     };
+
+     const title = getVal("제목") || "";
+     const writer = getVal("작성자") || "민준";
+     const rawDate = getVal("날짜");
+
+     let formattedDate = "";
+     if (rawDate) {
+        try {
+           const d = new Date(rawDate);
+           if (!isNaN(d.getTime())) {
+              formattedDate = d.toISOString().split('T')[0];
+           } else {
+              formattedDate = rawDate.toString().split('T')[0];
+           }
+        } catch (e) {
+           formattedDate = rawDate.toString().split('T')[0];
+        }
+     } else {
+        formattedDate = new Date().toISOString().split('T')[0];
+     }
+
+     setFormData({
+          date: formattedDate,
+          writer: writer,
+          title: title,
+          author: getVal("작가") || "",
+          thumbnail: getVal("표지") || "",
+          content: getVal("생각") || getVal("느낀점") || getVal("느낀 점") || "",
+          rating: Number(getVal("별점")) || 5,
+          summary: getVal("한 줄") || getVal("한줄") || "",
+          quote: getVal("인상") || getVal("구절") || "",
+          quizScore: getVal("퀴즈 점수") || getVal("퀴즈점수") || "",
+          memo: getVal("기타") || getVal("메모") || "",
+          originalTitle: title,
+          originalWriter: writer,
+          bookDescription: ""
+     });
+     
+     setSelectedReport(null);
+     setIsModalOpen(true);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleQuizAnswerChange = (qIndex: number, oIndex: number) => {
+    const newAnswers = [...quizAnswers];
+    newAnswers[qIndex] = oIndex;
+    setQuizAnswers(newAnswers);
+
+    if (aiCoach && newAnswers.length === aiCoach.quizzes.length && !newAnswers.includes(-1)) {
+      let correct = 0;
+      aiCoach.quizzes.forEach((q, i) => {
+        if (q.answer === newAnswers[i]) correct++;
+      });
+      const score = `${correct} / ${aiCoach.quizzes.length}`;
+      setFormData(prev => ({ ...prev, quizScore: score }));
+    }
+  };
+
+  const handleGenerateAICoach = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!formData.title) return alert("먼저 책 제목을 입력해주세요!");
+    
+    setIsGeneratingAI(true);
+    try {
+        const response = await generateBookAIStuff(formData.title, formData.author, formData.bookDescription);
+        if (response.success) {
+            setAICoach({ quizzes: response.quizzes, guides: response.guides });
+            setQuizAnswers(new Array(response.quizzes.length).fill(-1));
+        } else {
+            alert("AI 생성 실패: " + response.error);
+        }
+    } catch (err) {
+        alert("AI 정보를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+        setIsGeneratingAI(false);
+    }
+  };
+
+  const handleBookSearch = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!formData.title) return alert("먼저 책 제목을 입력해주세요!");
+    
+    setIsSearchingBook(true);
+    setBookResults([]);
+    try {
+        const response = await searchAladinBooks(formData.title);
+        if (response.success) {
+            setBookResults(response.items || []);
+        } else {
+            alert("도서 검색 중 오류가 발생했습니다.");
+        }
+    } catch (err) {
+        console.error("Book Search Error:", err);
+    } finally {
+        setIsSearchingBook(false);
+    }
+  };
+
+  const selectThumbnail = (url: string, author: string = "", description: string = "") => {
+    setFormData(prev => ({ 
+        ...prev, 
+        thumbnail: url, 
+        author: author || prev.author,
+        bookDescription: description || prev.bookDescription
+    }));
+    setBookResults([]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    const payload = {
+        ...formData,
+        quizzes: aiCoach?.quizzes || [],
+        quizAnswers: quizAnswers
+    };
+    
+    try {
+        const response = await saveReadingReport(payload);
+        if (response.success) {
+            alert("✅ 소중한 감상문이 안전하게 보관되었습니다!");
+            closeModal();
+            loadData();
+        } else {
+            alert("❌ 저장 중 오류 발생: " + response.error);
+        }
+    } catch (err: any) {
+        alert("❌ 네트워크 오류: " + err.message);
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  if (isAuthorized === null) return <div className="min-h-screen bg-background-warm flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-background-warm flex items-center justify-center p-6 font-noto">
+        <div className="w-full max-w-md animate-in fade-in zoom-in duration-700">
+           <Card className="p-10 md:p-12 text-center shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-primary"></div>
+              <div className="mb-8 p-6 bg-primary/10 text-primary w-24 h-24 rounded-[2rem] mx-auto flex items-center justify-center transform -rotate-6 shadow-inner">
+                 <Lock size={48} strokeWidth={2.5} />
+              </div>
+              <h2 className="text-3xl font-black text-text-main mb-3 tracking-tighter">우리 식구만 들어와요!</h2>
+              <p className="text-olive/60 font-medium mb-10 leading-relaxed">민준이와 유준이네 보물 상자를 열려면<br/>비밀번호를 입력해주세요. 😊</p>
+              
+              <form onSubmit={handleLogin} className="space-y-4">
+                 <div className="relative">
+                    <input 
+                       type="password" 
+                       value={passwordInput}
+                       onChange={(e) => setPasswordInput(e.target.value)}
+                       placeholder="비밀번호를 입력하세요" 
+                       className={cn(
+                          "w-full px-6 py-4 bg-background-warm rounded-2xl border border-olive/5 text-center text-lg font-black focus:outline-none focus:ring-4 transition-all tracking-widest",
+                          authError ? "ring-error/20 border-error/20 shake-horizontal" : "focus:ring-primary/10"
+                       )}
+                       autoFocus
+                    />
+                 </div>
+                 {authError && <p className="text-error font-bold text-xs animate-in fade-in">앗! 비밀번호가 틀린 것 같아요. 다시 볼까?</p>}
+                 <button 
+                    disabled={isLoading}
+                    className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 hover:-translate-y-1 active:scale-95 transition-all text-lg mt-6"
+                 >
+                    {isLoading ? "열쇠 확인 중..." : "서재 문 열기 🔑"}
+                 </button>
+              </form>
+           </Card>
+           <p className="mt-8 text-center text-[10px] font-black text-olive/20 uppercase tracking-widest">Team MJ & YJ Family Reading Journal</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row min-h-screen bg-background-warm font-noto tracking-tight relative overflow-x-hidden">
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm h-18 bg-white/90 backdrop-blur-xl border border-olive/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] z-50 flex items-center justify-around px-2 animate-in slide-in-from-bottom-10 duration-1000">
+         <SidebarItem icon={LayoutDashboard} label="홈" active={!isLibraryOpen} onClick={() => { setIsLibraryOpen(false); setFilterWriter(null); }} mobile />
+         <SidebarItem icon={Library} label="서재" active={isLibraryOpen} onClick={() => handleOpenLibrary()} mobile />
+         <SidebarItem icon={SquarePen} label="기록" onClick={() => setIsModalOpen(true)} mobile />
+         <SidebarItem icon={Settings} label="설정" mobile />
+      </div>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 fixed inset-y-0 left-0 flex-col p-6 bg-white border-r border-olive/10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-30">
+        <div className="flex items-center gap-3 mb-10 pl-2">
+          <div className="p-2 bg-primary rounded-xl text-white shadow-lg shadow-primary/20">
+            <Book size={24} strokeWidth={3} />
+          </div>
+          <h1 className="text-xl font-black text-primary tracking-tighter">꿈꾸는 북카페</h1>
+        </div>
+        <nav className="flex-1 space-y-2">
+          <SidebarItem icon={LayoutDashboard} label="홈 대시보드" active={!isLibraryOpen} onClick={() => { setIsLibraryOpen(false); setFilterWriter(null); }} />
+          <SidebarItem icon={Library} label="나의 서재" active={isLibraryOpen} onClick={() => handleOpenLibrary()} />
+          <SidebarItem icon={SquarePen} label="감상문 작성" onClick={() => setIsModalOpen(true)} />
+          <SidebarItem icon={Trophy} label="독서 챌린지" />
+          <SidebarItem icon={Settings} label="환경 설정" />
+        </nav>
+        <div className="mt-auto p-4 bg-primary/5 rounded-3xl border border-primary/10">
+           <p className="text-[10px] font-black text-primary/40 uppercase mb-2">프리미엄 코칭</p>
+           <p className="text-xs font-bold text-olive/70 leading-relaxed">매일 AI와 함께 책을 읽으면 더 똑똑해져요! 🚀</p>
+        </div>
+      </aside>
+
+      <main className="flex-1 lg:ml-64 p-5 md:p-12 max-w-7xl mx-auto w-full pb-32 lg:pb-12 transition-all">
+        {!isLibraryOpen ? (
+          <>
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 md:mb-12">
+              <div className="animate-in fade-in slide-in-from-left-4 duration-1000">
+                <h2 className="text-2xl md:text-4xl font-black text-text-main mb-1 tracking-tighter">안녕!! 민준, 유준아! 👋</h2>
+                <p className="text-sm md:text-base text-olive/60 font-medium font-noto">지혜가 차곡차곡 쌓이고 있어요!</p>
+              </div>
+              <div className="flex gap-2">
+                 <button className="p-3 bg-white rounded-2xl border border-olive/10 shadow-sm text-olive hover:bg-white hover:shadow-md transition-all active:scale-95"><Bell size={20} /></button>
+                 <button className="p-3 bg-white rounded-2xl border border-olive/10 shadow-sm text-olive hover:bg-white hover:shadow-md transition-all active:scale-95"><User size={20} /></button>
+              </div>
+            </header>
+
+            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-10 md:mb-12">
+              <div className="animate-in fade-in zoom-in duration-500 delay-100">
+                <StatCard title="우리 집 전체 독서량" value={`${totalReportsCount}권`} icon={Book} color="bg-primary" onClick={() => handleOpenLibrary()} />
+              </div>
+              <div className="animate-in fade-in zoom-in duration-500 delay-200">
+                <StatCard title="민준이의 기록" value={`${minjunCount}개`} icon={SquarePen} color="bg-olive" onClick={() => handleOpenLibrary("민준")} />
+              </div>
+              <div className="animate-in fade-in zoom-in duration-500 delay-300">
+                <StatCard title="유준이의 기록" value={`${yujunCount}개`} icon={Users} color="bg-accent" onClick={() => handleOpenLibrary("유준")} />
+              </div>
+            </section>
+
+            <Card className="mb-10 md:mb-14 bg-primary text-white relative overflow-hidden flex flex-col md:flex-row items-start md:items-center p-8 md:p-12 border-none shadow-2xl transform transition-all hover:shadow-primary/30 group">
+              <div className="relative z-10 max-w-lg w-full">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 backdrop-blur-sm">오늘의 명언</div>
+                <h3 className="text-2xl md:text-3xl font-black mb-6 leading-normal tracking-tighter">"읽는 사람(Reader)은 내일의 리더(Leader)가 됩니다."<br/>오늘의 생각을 기록해볼까?</h3>
+                <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-accent hover:bg-white hover:text-accent transform hover:scale-105 active:scale-95 text-white px-10 py-4 rounded-[2rem] font-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-accent/20">기록 시작하기 <ChevronRight size={20} /></button>
+              </div>
+              <div className="absolute -right-16 -bottom-16 md:right-12 md:top-1/2 md:-translate-y-1/2 opacity-10 md:opacity-20 pointer-events-none transform rotate-12 md:rotate-0 transition-transform duration-1000 group-hover:rotate-6 group-hover:scale-110">
+                 <Book size={280} />
+              </div>
+            </Card>
+
+            <section className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl md:text-2xl font-black text-text-main tracking-tight">우리 서재의 보물들 💎</h3>
+                <button onClick={() => handleOpenLibrary()} className="text-[10px] md:text-xs font-black text-primary hover:bg-primary/10 px-4 py-2 bg-primary/5 rounded-2xl flex items-center gap-1 transition-all">전체보기 <ChevronRight size={14} /></button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 lg:gap-8">
+                  {libraryData.slice(0, 5).map((r, i) => (
+                      <div key={i} onClick={() => setSelectedReport(r)} className="animate-in fade-in zoom-in duration-700" style={{ animationDelay: `${i * 100}ms` }}>
+                        <BookCard title={r["제목"]} author={r["작가"]} progress={100} image={r["표지"]} />
+                      </div>
+                  ))}
+                  {libraryData.length === 0 && !isDataLoading && (
+                      <div className="col-span-full py-24 text-center bg-white/50 rounded-[3rem] border-2 border-dashed border-olive/10">
+                        <div className="mb-4 text-olive/20 flex justify-center"><Book size={64} /></div>
+                        <p className="text-olive/40 font-black">아직 기록이 없어요. 첫 번째 감상문을 써보세요!</p>
+                      </div>
+                  )}
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+                <div className="flex items-center gap-4">
+                   <div className="p-3 bg-white rounded-2xl text-primary shadow-sm"><Library size={28} /></div>
+                   <h2 className="text-2xl md:text-4xl font-black text-text-main tracking-tighter">
+                     {filterWriter ? `${filterWriter}의 비밀 서재 📚` : "우리 집 보물 상자 서재 📚"}
+                   </h2>
+                </div>
+                <button onClick={() => { setIsLibraryOpen(false); setFilterWriter(null); }} className="w-full md:w-auto px-6 py-3 bg-white text-olive/70 font-bold rounded-2xl border border-olive/10 hover:bg-background-warm hover:text-primary flex items-center justify-center gap-2 transition-all"><X size={20} /> 서재 닫기</button>
+             </div>
+             
+             <Card className="p-0 border-none shadow-2xl overflow-hidden font-noto bg-white rounded-[2.5rem]">
+                 {/* Desktop List Table */}
+                 <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                           <tr className="bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest border-b border-primary/10">
+                               <th className="px-10 py-6">날짜</th>
+                               <th className="px-10 py-6">오늘의 지혜</th>
+                               <th className="px-10 py-6">작가</th>
+                               <th className="px-10 py-6">작성자</th>
+                               <th className="px-10 py-6 text-right">기록보기</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-olive/5 text-sm">
+                           {isDataLoading ? (
+                               <tr><td colSpan={5} className="px-10 py-24 text-center text-olive/30 font-black animate-pulse">지혜를 불러오는 중입니다... ✨</td></tr>
+                           ) : filteredLibraryData.length === 0 ? (
+                               <tr><td colSpan={5} className="px-10 py-24 text-center text-olive/30 font-black">아직 보관된 기록이 없습니다.</td></tr>
+                           ) : (
+                               filteredLibraryData.map((row, idx) => (
+                                   <tr key={idx} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => setSelectedReport(row)}>
+                                       <td className="px-10 py-6 text-olive/40 font-bold whitespace-nowrap">{(row["날짜"] || "").toString().split('T')[0]}</td>
+                                       <td className="px-10 py-6">
+                                          <div className="flex items-center gap-4">
+                                             {row["표지"] && <img src={row["표지"]} className="w-10 h-14 object-cover rounded-lg shadow-md group-hover:scale-110 transition-transform" />}
+                                             <span className="text-text-main font-black group-hover:text-primary transition-colors">{row["제목"]}</span>
+                                          </div>
+                                       </td>
+                                       <td className="px-10 py-6 text-olive/60 font-semibold truncate max-w-[150px]">{row["작가"]}</td>
+                                       <td className="px-10 py-6">
+                                          <span className={cn(
+                                             "px-4 py-1.5 rounded-full text-[10px] font-black tracking-tight",
+                                             (row["작성자"] || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+                                          )}>{row["작성자"]}</span>
+                                       </td>
+                                       <td className="px-10 py-6 text-right"><div className="p-2 inline-flex bg-background-warm text-olive/20 group-hover:bg-primary group-hover:text-white rounded-xl transition-all"><ChevronRight size={18} /></div></td>
+                                   </tr>
+                               ))
+                           )}
+                        </tbody>
+                    </table>
+                 </div>
+
+                 {/* Mobile Card List View */}
+                 <div className="md:hidden divide-y divide-olive/5">
+                    {isDataLoading && <div className="p-20 text-center text-olive/30 font-black animate-pulse">지혜를 불러오는 중... ✨</div>}
+                    {!isDataLoading && filteredLibraryData.map((r, i) => (
+                      <div key={i} className="p-5 active:bg-primary/5 transition-colors flex items-center gap-4" onClick={() => setSelectedReport(r)}>
+                        {r["표지"] && <img src={r["표지"]} className="w-20 h-28 object-cover rounded-2xl shadow-lg border-2 border-white" />}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black text-olive/30">{r["날짜"]}</span>
+                            <span className={cn(
+                                    "px-2 py-0.5 rounded-full text-[9px] font-black",
+                                    (r["작성자"] || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+                                  )}>{r["작성자"]}</span>
+                          </div>
+                          <h4 className="text-lg font-black text-text-main truncate mb-0.5">{r["제목"]}</h4>
+                          <p className="text-xs font-bold text-olive/50 truncate mb-3">{r["작가"]}</p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex text-accent text-[10px]">{"★".repeat(Number(r["별점"]))}</div>
+                            <span className="text-primary font-black text-[10px] flex items-center gap-0.5">자세히 보기 <ChevronRight size={12} /></span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                 </div>
+              </Card>
+          </section>
+        )}
+      </main>
+
+      {/* Record Detail Modal */}
+      {selectedReport && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-primary/40 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-white w-full h-full md:h-auto md:max-w-3xl md:max-h-[90vh] md:rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col animate-in slide-in-from-bottom-10">
+                  <button onClick={() => setSelectedReport(null)} className="absolute top-6 right-6 p-3 bg-white/80 backdrop-blur-md rounded-2xl text-olive/40 hover:text-primary transition-all z-20 active:scale-90"><X size={24} /></button>
+                  <div className="flex-1 overflow-y-auto font-noto pb-24 md:pb-0">
+                      <div className="h-64 md:h-80 bg-primary relative overflow-hidden shrink-0">
+                          {selectedReport["표지"] ? (
+                             <img src={selectedReport["표지"]} className="w-full h-full object-cover blur-3xl opacity-40 scale-150" />
+                          ) : (
+                             <div className="w-full h-full bg-primary" />
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center p-8 md:p-12">
+                             <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-10 w-full">
+                                {selectedReport["표지"] && <img src={selectedReport["표지"]} className="w-32 h-44 md:w-44 md:h-64 object-cover rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-white/30 transform transition-hover hover:scale-105 duration-500" />}
+                                <div className="text-center md:text-left text-white drop-shadow-lg">
+                                   <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest mb-4">{selectedReport["날짜"]}</span>
+                                   <h3 className="text-3xl md:text-5xl font-black mb-3 leading-tight tracking-tighter line-clamp-3">{selectedReport["제목"]}</h3>
+                                   <p className="text-lg md:text-xl font-bold opacity-80">{selectedReport["작가"]} 저</p>
+                                </div>
+                             </div>
+                          </div>
+                      </div>
+                      <div className="p-8 md:p-12 space-y-12">
+                          <div className="grid grid-cols-2 gap-4 md:gap-8">
+                             <div className="p-5 bg-background-warm rounded-[2rem] border border-olive/5 shadow-inner">
+                                <span className="text-[10px] font-black text-olive/30 uppercase block mb-2 tracking-widest">나의 평점</span>
+                                <div className="text-accent text-2xl drop-shadow-sm">{"★".repeat(Number(selectedReport["별점"]))}</div>
+                             </div>
+                             <div className="p-5 bg-background-warm rounded-[2rem] border border-olive/5 shadow-inner">
+                                <span className="text-[10px] font-black text-olive/30 uppercase block mb-2 tracking-widest">기록한 사람</span>
+                                <div className="font-extrabold text-primary text-2xl">{selectedReport["작성자"]}</div>
+                             </div>
+                          </div>
+                          
+                          <div className="space-y-6">
+                              <h4 className="flex items-center gap-2 font-black text-text-main text-lg tracking-tight">
+                                 <Star className="text-accent fill-accent" size={20} /> 인상 깊은 한 줄
+                              </h4>
+                              <div className="relative p-8 md:p-10 bg-accent/5 rounded-[2.5rem] border border-accent/10 border-l-8 border-l-accent overflow-hidden group">
+                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-1000"><Star size={120} /></div>
+                                 <p className="relative z-10 text-lg md:text-2xl text-text-main leading-relaxed font-black italic">
+                                    "{selectedReport["인상 깊은 구절"] || selectedReport["한 줄 평"] || selectedReport["한 줄"] || "기록된 한 줄이 없어요."}"
+                                 </p>
+                              </div>
+                          </div>
+
+                          <div className="space-y-6">
+                              <h4 className="flex items-center gap-2 font-black text-text-main text-lg tracking-tight">
+                                 <SquarePen className="text-primary fill-primary/10" size={20} /> 나의 생각 주머니
+                              </h4>
+                              <div className="p-8 md:p-10 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl shadow-olive/5 min-h-[150px]">
+                                 <p className="text-base md:text-lg text-olive/80 leading-relaxed font-bold whitespace-pre-wrap">
+                                     {selectedReport["생각 및 느낀점"] || selectedReport["느낀점"] || selectedReport["느낀 점"] || "아무런 생각이 기록되지 않았네요! 다음에 더 자세히 써볼까요?"}
+                                 </p>
+                              </div>
+                          </div>
+                          
+                          {selectedReport["퀴즈 점수"] && (
+                             <div className="p-8 bg-success/5 rounded-[2.5rem] border border-success/20 flex items-center justify-between group">
+                                <div className="flex items-center gap-4">
+                                   <div className="p-4 bg-white rounded-2xl shadow-sm text-success transform group-hover:rotate-12 transition-transform"><Trophy size={32} /></div>
+                                   <div>
+                                      <p className="text-xs font-black text-success/50 uppercase tracking-widest leading-none mb-1">독서 퀴즈 점수</p>
+                                      <span className="text-sm font-bold text-success">책을 정말 꼼꼼히 읽었구나!</span>
+                                   </div>
+                                </div>
+                                <span className="text-4xl font-black text-success tracking-tighter">{selectedReport["퀴즈 점수"]}</span>
+                             </div>
+                          )}
+                      </div>
+                  </div>
+                  <div className="p-6 md:p-10 bg-white border-t border-olive/5 flex gap-4 sticky md:relative bottom-0 z-30 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] md:shadow-none">
+                     <button onClick={() => { const r = selectedReport; setSelectedReport(null); handleEditReport(r); }} className="flex-1 py-4 md:py-5 bg-primary text-white font-black rounded-[2rem] shadow-xl shadow-primary/20 flex items-center justify-center gap-3 transform active:scale-95 transition-all text-lg hover:shadow-primary/40"><Edit2 size={22} /> 수정하기</button>
+                     <button onClick={() => setSelectedReport(null)} className="px-10 py-4 md:py-5 bg-background-warm text-olive/60 font-black rounded-[2rem] active:scale-95 transition-all">나가기</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Write/Edit Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-primary/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-background-warm w-full h-full md:h-auto md:max-w-6xl md:max-h-[95vh] md:rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
+            <div className="px-6 py-5 md:px-12 md:py-8 border-b border-olive/5 flex items-center justify-between bg-white/50 backdrop-blur-md sticky top-0 z-20">
+              <div className="flex items-center gap-3">
+                 <div className="p-2 bg-primary rounded-xl text-white shadow-md"><SquarePen size={20} /></div>
+                 <h2 className="text-xl md:text-2xl font-black text-text-main tracking-tighter">{formData.originalTitle ? "기록 다듬기" : "새로운 시작하기"}</h2>
+              </div>
+              <button onClick={closeModal} className="p-3 bg-white/50 rounded-2xl text-olive/40 hover:text-error hover:bg-error/5 transition-all active:scale-90"><X size={24} /></button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 md:p-12 pb-32 md:pb-12 scroll-smooth">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16">
+                <div className="space-y-8 animate-in fade-in slide-in-from-left-6 duration-700">
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                        <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">작성 날짜</label>
+                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full px-6 py-4 bg-white rounded-2xl border border-olive/5 text-sm font-bold text-text-main focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner" />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">나의 이름</label>
+                        <select name="writer" value={formData.writer} onChange={handleInputChange} className="w-full px-6 py-4 bg-white rounded-2xl border border-olive/5 focus:outline-none text-sm font-black text-primary shadow-inner appearance-none"><option value="민준">민준</option><option value="유준">유준</option></select>
+                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">어떤 책을 읽었니? 📚</label>
+                    <div className="flex gap-2">
+                      <input type="text" name="title" required placeholder="책 제목을 입력해줘" value={formData.title} onChange={handleInputChange} className="flex-1 px-6 py-4 bg-white rounded-2xl border border-olive/5 focus:outline-none text-sm font-black placeholder:text-olive/20 shadow-inner" />
+                      <button onClick={handleBookSearch} disabled={isSearchingBook} className="px-5 py-4 bg-accent hover:bg-accent/80 text-white font-black rounded-2xl text-xs transition-all active:scale-95 shadow-lg shadow-accent/20 flex items-center gap-2 shrink-0">{isSearchingBook ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <Search size={18} />} 표지찾기</button>
+                    </div>
+                  </div>
+
+                  {bookResults.length > 0 && (
+                    <div className="p-6 bg-white rounded-[2rem] border border-olive/5 shadow-xl animate-in fade-in zoom-in duration-500">
+                       <p className="text-[10px] font-black text-olive/40 uppercase tracking-widest mb-4">가장 비슷한 책을 선택해줘</p>
+                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        {bookResults.map((b:any, i:number) => (
+                          <button 
+                            key={i} 
+                            type="button" 
+                            onClick={() => selectThumbnail(b.thumbnail, b.author, b.description)} 
+                            className="group relative aspect-[3/4] rounded-xl overflow-hidden border-2 border-transparent hover:border-accent transition-all shadow-md active:scale-95"
+                            title={b.title}
+                          >
+                            <img src={b.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            <div className="absolute inset-0 bg-primary/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center">
+                               <span className="text-[9px] text-white font-black leading-tight line-clamp-2">{b.title}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">작가 이름</label>
+                    <input type="text" name="author" placeholder="글을 쓴 작가님 성함" value={formData.author} onChange={handleInputChange} className="w-full px-6 py-4 bg-white rounded-2xl border border-olive/5 focus:outline-none text-sm font-bold shadow-inner" />
+                  </div>
+
+                  {!aiCoach && !formData.originalTitle && (
+                    <button 
+                      onClick={handleGenerateAICoach} 
+                      disabled={isGeneratingAI} 
+                      className="w-full py-5 bg-gradient-to-r from-primary to-olive text-white font-black rounded-[2rem] shadow-2xl shadow-primary/20 flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95 transition-all text-base animate-pulse hover:animate-none"
+                    >
+                      {isGeneratingAI ? "AI 코치가 책장을 넘겨보는 중..." : "AI와 함께 독서 퀴즈＆코칭 시작! ✨"}
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-6 duration-700">
+                    {/* AI Coach Area */}
+                    {aiCoach && (
+                      <div className="space-y-8">
+                        <section className="bg-white p-8 rounded-[2.5rem] border border-olive/10 shadow-xl shadow-olive/5 space-y-6">
+                           <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-black text-accent uppercase tracking-widest flex items-center gap-2">
+                                <Star fill="#FF8400" size={16} /> 독서 이해도 확인 퀴즈
+                              </h4>
+                              {formData.quizScore && <span className="px-3 py-1 bg-accent/10 text-accent font-black text-xs rounded-full">점수: {formData.quizScore}</span>}
+                           </div>
+                           <div className="space-y-8">
+                             {(() => {
+                               const isQuizCompleted = aiCoach && quizAnswers.length === aiCoach.quizzes.length && !quizAnswers.includes(-1);
+                               return aiCoach.quizzes.map((q, qIndex) => (
+                               <div key={qIndex} className="space-y-4">
+                                 <p className="text-sm md:text-base font-black text-text-main flex gap-2">
+                                    <span className="text-accent">{qIndex + 1}.</span> {q.question}
+                                 </p>
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                   {q.options.map((opt: string, oIndex: number) => {
+                                     const isSelected = quizAnswers[qIndex] === oIndex;
+                                     const isCorrect = q.answer === oIndex;
+                                     const isWrong = isSelected && !isCorrect;
+                                     const showAsCorrect = isQuizCompleted && isCorrect;
+                                     const showAsWrong = isQuizCompleted && isWrong;
+
+                                     return (
+                                       <button
+                                         key={oIndex}
+                                         type="button"
+                                         disabled={isQuizCompleted}
+                                         onClick={() => handleQuizAnswerChange(qIndex, oIndex)}
+                                         className={cn(
+                                           "w-full text-left px-5 py-3.5 rounded-2xl text-[13px] font-bold transition-all border-2 flex items-center justify-between min-h-[64px] active:scale-95 transform",
+                                           isQuizCompleted 
+                                             ? (showAsCorrect 
+                                                 ? "bg-success/5 text-success border-success/30 ring-2 ring-success/20" 
+                                                 : (showAsWrong 
+                                                     ? "bg-error/5 text-error border-error/30 ring-2 ring-error/20 opacity-90"
+                                                     : "bg-background-warm text-olive/20 border-transparent opacity-60"))
+                                             : (isSelected 
+                                                 ? "bg-accent text-white border-accent shadow-xl shadow-accent/20 z-10" 
+                                                 : "bg-white text-olive/70 hover:bg-background-warm border-olive/5 hover:border-olive/20")
+                                         )}
+                                       >
+                                         <span className="line-clamp-2 md:line-clamp-none leading-relaxed">{opt}</span>
+                                         {isQuizCompleted && isCorrect && <CheckCircle2 size={18} className="text-success shrink-0 ml-2" />}
+                                         {isQuizCompleted && isWrong && <XCircle size={18} className="text-error shrink-0 ml-2" />}
+                                       </button>
+                                     );
+                                   })}
+                                 </div>
+                               </div>
+                             ));
+                             })()}
+                           </div>
+                        </section>
+
+                        <section className="bg-primary p-8 md:p-10 rounded-[2.5rem] shadow-2xl shadow-primary/30 text-white relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-125 transition-transform duration-1000 rotate-12"><TrendingUp size={160} /></div>
+                           <h4 className="relative z-10 text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-6 opacity-70">
+                             <TrendingUp size={14} /> AI의 맞춤형 코칭 질문
+                           </h4>
+                           <div className="relative z-10 space-y-5">
+                             {aiCoach.guides.map((g, i) => (
+                               <div key={i} className="flex gap-4 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 hover:bg-white/20 transition-all">
+                                 <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-accent mt-1.5 md:mt-2 shrink-0 animate-pulse" />
+                                 <p className="text-sm md:text-base font-black leading-relaxed">{g}</p>
+                               </div>
+                             ))}
+                           </div>
+                        </section>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-6 flex flex-col h-full min-h-[400px]">
+                        <div className="space-y-2">
+                          <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">내 평점</label>
+                          <div className="flex gap-2">
+                             {[1,2,3,4,5].map(star => (
+                                <button key={star} type="button" onClick={() => setFormData(prev => ({...prev, rating: star}))} className={cn("text-3xl transition-transform active:scale-75", formData.rating >= star ? "text-accent" : "text-olive/10 hover:text-accent/40")}>★</button>
+                             ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">가장 기억에 남는 한 줄 ✨</label>
+                          <input type="text" name="quote" value={formData.quote} onChange={handleInputChange} placeholder="멋진 문장이나 한 줄 평을 적어줘" className="w-full px-6 py-4 bg-white rounded-2xl border border-olive/5 focus:outline-none text-sm font-bold shadow-inner" />
+                        </div>
+                        
+                        <div className="space-y-2 flex-col flex-1 flex">
+                          <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">나의 생각 주머니 🖋️</label>
+                          <textarea name="content" required value={formData.content} onChange={handleInputChange} placeholder="이 책을 읽고 어떤 생각이 들었니? 너의 마음을 솔직하게 적어봐!" className="flex-1 w-full px-8 py-6 bg-white rounded-[2.5rem] border border-olive/5 focus:outline-none text-base font-bold placeholder:text-olive/20 shadow-inner min-h-[250px] leading-relaxed" />
+                        </div>
+                        
+                        <div className="pt-6 pb-4">
+                           <button type="submit" disabled={isLoading} className="w-full py-5 md:py-6 bg-primary text-white font-black rounded-[2.5rem] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all text-lg lg:text-xl">
+                             {isLoading ? <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" /> : <><Book size={24} /> 소중한 기록 보관하기</>}
+                           </button>
+                        </div>
+                    </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
