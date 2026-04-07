@@ -1,8 +1,9 @@
 "use server";
 
-const SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbz2H1gQhRv7UtfSRNa9MEy5MtXbP8qeQHUhFqFVHv4ixOUx227nBZlBzwivQvcxhLxN3Q/exec";
+const SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
 export async function saveReadingReport(data: any) {
+  if (!SCRIPT_URL) return { success: false, error: "서버 설정 오류: GOOGLE_SCRIPT_URL이 설정되지 않았습니다." };
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
@@ -84,6 +85,7 @@ export async function generateBookAIStuff(title: string, author: string = "", de
 }
 
 export async function fetchReadingReports() {
+  if (!SCRIPT_URL) return { success: false, error: "서버 설정 오류: GOOGLE_SCRIPT_URL이 설정되지 않았습니다." };
   try {
     const response = await fetch(SCRIPT_URL, { 
         method: "GET", 
@@ -109,7 +111,8 @@ export async function fetchReadingReports() {
 
 export async function searchAladinBooks(query: string) {
   try {
-    const ttbKey = process.env.ALADIN_TTB_KEY || "ttblongneck811117001";
+    const ttbKey = process.env.ALADIN_TTB_KEY;
+    if (!ttbKey) throw new Error("서버 설정 오류: ALADIN_TTB_KEY가 설정되지 않았습니다.");
     const url = `https://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=${ttbKey}&Query=${encodeURIComponent(query)}&QueryType=Title&MaxResults=12&start=1&SearchTarget=Book&output=js&Version=20131101`;
     
     const response = await fetch(url);
