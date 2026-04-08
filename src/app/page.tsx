@@ -31,6 +31,20 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const READING_QUOTES = [
+  "\"읽는 사람(Reader)은 내일의 리더(Leader)가 됩니다.\"",
+  "\"책은 마음의 창입니다. 오늘 어떤 창을 열어볼까요?\"",
+  "\"독서는 가장 싼 값으로 얻을 수 있는 가장 비싼 지혜입니다.\"",
+  "\"오늘 무심코 읽은 한 줄이 내일의 나를 바꿉니다.\"",
+  "\"책 한 권은 하나의 세계입니다. 오늘은 어떤 세계로 가볼까요?\"",
+  "\"독서는 완성된 사람을 만들고, 글쓰기는 정확한 사람을 만듭니다.\"",
+  "\"책 없는 방은 영혼 없는 몸과 같습니다.\"",
+  "\"하루라도 책을 읽지 않으면 입안에 가시가 돋습니다.\"",
+  "\"독서는 지식의 재료를 줄 뿐 아니라, 지혜의 길을 엽니다.\"",
+  "\"좋은 책을 읽는 것은 과거의 가장 훌륭한 사람들과 대화하는 것이다.\""
+];
+
+
 // --- Components ---
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, mobile = false }: { icon: any, label: string, active?: boolean, onClick?: () => void, mobile?: boolean }) => (
@@ -119,6 +133,7 @@ export default function DashboardPage() {
   const [recommendedBooks, setRecommendedBooks] = useState<any[]>([]);
   const [adultRecommendedBooks, setAdultRecommendedBooks] = useState<any[]>([]);
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
+  const [currentQuote, setCurrentQuote] = useState(READING_QUOTES[0]);
 
   const toLocalISOString = (date?: Date | string | number) => {
     if (!date) return "";
@@ -143,6 +158,15 @@ export default function DashboardPage() {
     originalWriter: "",
     bookDescription: ""
   });
+
+  useEffect(() => {
+    // Pick quote based on the week of the year
+    const now = new Date();
+    const oneJan = new Date(now.getFullYear(), 0, 1);
+    const numberOfDays = Math.floor((now.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000));
+    const resultWeek = Math.ceil((now.getDay() + 1 + numberOfDays) / 7);
+    setCurrentQuote(READING_QUOTES[resultWeek % READING_QUOTES.length]);
+  }, []);
 
   // Calculate real-time stats
   const totalReportsCount = libraryData.length;
@@ -473,7 +497,7 @@ export default function DashboardPage() {
             <Card className="mb-10 md:mb-14 bg-primary text-white relative overflow-hidden flex flex-col md:flex-row items-start md:items-center p-8 md:p-12 border-none shadow-2xl transform transition-all hover:shadow-primary/30 group">
               <div className="relative z-10 max-w-lg w-full">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 backdrop-blur-sm">오늘의 명언</div>
-                <h3 className="text-2xl md:text-3xl font-black mb-6 leading-normal tracking-tighter">"읽는 사람(Reader)은 내일의 리더(Leader)가 됩니다."<br/>오늘의 생각을 기록해볼까?</h3>
+                <h3 className="text-2xl md:text-3xl font-black mb-6 leading-normal tracking-tighter" dangerouslySetInnerHTML={{ __html: `${currentQuote}<br/>오늘의 생각을 기록해볼까?` }}></h3>
                 <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-accent hover:bg-white hover:text-accent transform hover:scale-105 active:scale-95 text-white px-10 py-4 rounded-[2rem] font-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-accent/20">기록 시작하기 <ChevronRight size={20} /></button>
               </div>
               <div className="absolute -right-16 -bottom-16 md:right-12 md:top-1/2 md:-translate-y-1/2 opacity-10 md:opacity-20 pointer-events-none transform rotate-12 md:rotate-0 transition-transform duration-1000 group-hover:rotate-6 group-hover:scale-110">
