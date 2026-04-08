@@ -117,8 +117,15 @@ export default function DashboardPage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState(false);
 
+  const toLocalISOString = (date?: Date | string | number) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalISOString(),
     writer: "민준",
     title: "",
     author: "",
@@ -188,7 +195,7 @@ export default function DashboardPage() {
     setQuizAnswers([]);
     setBookResults([]);
     setFormData({
-        date: new Date().toISOString().split('T')[0],
+        date: toLocalISOString(),
         writer: "민준",
         title: "",
         author: "",
@@ -231,21 +238,7 @@ export default function DashboardPage() {
      const writer = getReportVal(report, ["작성자"], "writer") || "민준";
      const rawDate = getReportVal(report, ["날짜"], "date");
 
-     let formattedDate = "";
-     if (rawDate) {
-        try {
-           const d = new Date(rawDate);
-           if (!isNaN(d.getTime())) {
-              formattedDate = d.toISOString().split('T')[0];
-           } else {
-              formattedDate = rawDate.toString().split('T')[0];
-           }
-        } catch (e) {
-           formattedDate = rawDate.toString().split('T')[0];
-        }
-     } else {
-        formattedDate = new Date().toISOString().split('T')[0];
-     }
+     let formattedDate = toLocalISOString(rawDate) || toLocalISOString();
 
      setFormData({
           date: formattedDate,
@@ -528,7 +521,7 @@ export default function DashboardPage() {
                            ) : (
                                filteredLibraryData.map((row, idx) => (
                                    <tr key={idx} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => setSelectedReport(row)}>
-                                       <td className="px-10 py-6 text-olive/40 font-bold whitespace-nowrap">{(getReportVal(row, ["날짜"], "date") || "").toString().split('T')[0]}</td>
+                                       <td className="px-10 py-6 text-olive/40 font-bold whitespace-nowrap">{toLocalISOString(getReportVal(row, ["날짜"], "date"))}</td>
                                        <td className="px-10 py-6">
                                           <div className="flex items-center gap-4">
                                              {getReportVal(row, ["표지", "이미지", "썸네일"], "thumbnail") && <img src={getReportVal(row, ["표지", "이미지", "썸네일"], "thumbnail")} className="w-10 h-14 object-cover rounded-lg shadow-md group-hover:scale-110 transition-transform" />}
@@ -558,7 +551,7 @@ export default function DashboardPage() {
                         {getReportVal(r, ["표지", "이미지", "썸네일"], "thumbnail") && <img src={getReportVal(r, ["표지", "이미지", "썸네일"], "thumbnail")} className="w-20 h-28 object-cover rounded-2xl shadow-lg border-2 border-white" />}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-black text-olive/30">{getReportVal(r, ["날짜"], "date")}</span>
+                            <span className="text-[10px] font-black text-olive/30">{toLocalISOString(getReportVal(r, ["날짜"], "date"))}</span>
                             <span className={cn(
                                     "px-2 py-0.5 rounded-full text-[9px] font-black",
                                     (getReportVal(r, ["작성자"], "writer") || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
@@ -595,7 +588,7 @@ export default function DashboardPage() {
                              <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-10 w-full">
                                 {getReportVal(selectedReport, ["표지", "이미지", "썸네일"], "thumbnail") && <img src={getReportVal(selectedReport, ["표지", "이미지", "썸네일"], "thumbnail")} className="w-32 h-44 md:w-44 md:h-64 object-cover rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-white/30 transform transition-hover hover:scale-105 duration-500" />}
                                 <div className="text-center md:text-left text-white drop-shadow-lg">
-                                   <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest mb-4">{getReportVal(selectedReport, ["날짜"], "date")}</span>
+                                   <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest mb-4">{toLocalISOString(getReportVal(selectedReport, ["날짜"], "date"))}</span>
                                    <h3 className="text-3xl md:text-5xl font-black mb-3 leading-tight tracking-tighter line-clamp-3">{getReportVal(selectedReport, ["제목"], "title")}</h3>
                                    <p className="text-lg md:text-xl font-bold opacity-80">{getReportVal(selectedReport, ["작가", "저자"], "author")} 저</p>
                                 </div>
