@@ -474,9 +474,9 @@ export default function DashboardPage() {
                 <button onClick={() => handleOpenLibrary()} className="text-[10px] md:text-xs font-black text-primary hover:bg-primary/10 px-4 py-2 bg-primary/5 rounded-2xl flex items-center gap-1 transition-all">전체보기 <ChevronRight size={14} /></button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 lg:gap-8">
-                  {libraryData.slice(0, 5).map((r, i) => (
+                  {filteredLibraryData.slice(0, 5).map((r, i) => (
                       <div key={i} onClick={() => setSelectedReport(r)} className="animate-in fade-in zoom-in duration-700" style={{ animationDelay: `${i * 100}ms` }}>
-                        <BookCard title={r["제목"]} author={r["작가"]} progress={100} image={r["표지"]} />
+                        <BookCard title={getReportVal(r, ["제목"], "title")} author={getReportVal(r, ["작가", "저자"], "author")} progress={100} image={getReportVal(r, ["표지", "이미지", "썸네일"], "thumbnail")} />
                       </div>
                   ))}
                   {libraryData.length === 0 && !isDataLoading && (
