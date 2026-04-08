@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState(false);
   const [recommendedBooks, setRecommendedBooks] = useState<any[]>([]);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
 
   const toLocalISOString = (date?: Date | string | number) => {
     if (!date) return "";
@@ -501,9 +502,9 @@ export default function DashboardPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 lg:gap-8">
                   {recommendedBooks.map((b, i) => (
-                      <div key={i} className="animate-in fade-in zoom-in duration-700" style={{ animationDelay: `${i * 100}ms` }}>
-                         <div className="flex flex-col gap-3 group cursor-default h-full">
-                            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-olive/10 shadow-sm transition-all duration-500 transform group-hover:-translate-y-2 group-hover:shadow-xl">
+                      <div key={i} onClick={() => setSelectedRecommendation(b)} className="animate-in fade-in zoom-in duration-700 cursor-pointer" style={{ animationDelay: `${i * 100}ms` }}>
+                         <div className="flex flex-col gap-3 group h-full">
+                            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-olive/10 shadow-sm transition-all duration-500 transform group-hover:scale-[1.03] group-hover:shadow-2xl">
                                <img src={b.thumbnail} alt={b.title} className="object-cover w-full h-full" />
                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
                             </div>
@@ -860,6 +861,52 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      {/* Recommendation Detail Modal */}
+      {selectedRecommendation && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-0 md:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full h-full md:h-auto md:max-w-2xl md:max-h-[85vh] md:rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+            <button onClick={() => setSelectedRecommendation(null)} className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white md:text-olive/20 md:hover:text-primary transition-all z-20"><X size={24} /></button>
+            <div className="flex-1 overflow-y-auto">
+              <div className="h-48 md:h-64 bg-primary relative overflow-hidden">
+                 <img src={selectedRecommendation.thumbnail} className="w-full h-full object-cover blur-2xl opacity-30 scale-150" />
+                 <div className="absolute inset-0 flex items-center justify-center p-6 mt-4">
+                    <img src={selectedRecommendation.thumbnail} className="w-28 h-40 md:w-36 md:h-52 object-cover rounded-xl shadow-2xl border-4 border-white/20" />
+                 </div>
+              </div>
+              <div className="p-8 md:p-10 space-y-6">
+                <div className="text-center md:text-left">
+                  <h3 className="text-2xl md:text-3xl font-black text-text-main leading-tight mb-2">{selectedRecommendation.title}</h3>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-sm font-bold text-olive/50">
+                    <span>{selectedRecommendation.author}</span>
+                    <span className="w-1 h-1 rounded-full bg-olive/20" />
+                    <span>{selectedRecommendation.publisher}</span>
+                    {selectedRecommendation.pubDate && (
+                      <>
+                        <span className="w-1 h-1 rounded-full bg-olive/20" />
+                        <span>{selectedRecommendation.pubDate}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                   <h4 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                     <Book size={14} /> 책 소개
+                   </h4>
+                   <div className="p-6 md:p-8 bg-background-warm rounded-[2rem] border border-olive/5 shadow-inner">
+                      <p className="text-sm md:text-base text-olive/70 leading-relaxed font-medium whitespace-pre-wrap">
+                        {selectedRecommendation.description ? selectedRecommendation.description.replace(/<[^>]*>?/gm, "") : "상세 소개 기능 준비 중입니다."}
+                      </p>
+                   </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 md:p-8 border-t border-olive/5 bg-white flex justify-end">
+               <button onClick={() => setSelectedRecommendation(null)} className="px-8 py-3 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20 hover:-translate-y-0.5 active:scale-95 transition-all">확인</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

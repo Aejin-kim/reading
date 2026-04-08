@@ -159,7 +159,9 @@ export async function getRecommendedBooks() {
         title: item.title,
         author: item.author,
         thumbnail: item.cover,
-        publisher: item.publisher
+        publisher: item.publisher,
+        description: item.description,
+        pubDate: item.pubDate
       })) || []
     };
   } catch (error: any) {
