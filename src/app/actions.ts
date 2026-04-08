@@ -137,6 +137,37 @@ export async function searchAladinBooks(query: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function getRecommendedBooks() {
+  try {
+    const ttbKey = process.env.ALADIN_TTB_KEY;
+    if (!ttbKey) throw new Error("서버 설정 오류: ALADIN_TTB_KEY가 설정되지 않았습니다.");
+    
+    // Searching for 'Teenage Literature' as a keyword with Bestseller sort
+    // This is more effective for finding YA novels than category-based lists which include kids' workbooks
+    const url = `https://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=${ttbKey}&Query=${encodeURIComponent('청소년 문학')}&QueryType=Keyword&MaxResults=5&start=1&SearchTarget=Book&Sort=Bestseller&output=js&Version=20131101`;
+    
+    const response = await fetch(url, { next: { revalidate: 604800 } }); // 1 week
+    if (!response.ok) throw new Error("알라딘 API 응답 오류");
+    
+    const text = await response.text();
+    const data = JSON.parse(text);
+    
+    return { 
+      success: true, 
+      items: data.item?.map((item: any) => ({
+        title: item.title,
+        author: item.author,
+        thumbnail: item.cover,
+        publisher: item.publisher
+      })) || []
+    };
+  } catch (error: any) {
+    console.error("Recommended Books Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function validatePassword(password: string) {
   const correct = process.env.APP_PASSWORD || "1234";
   return { success: password === correct };

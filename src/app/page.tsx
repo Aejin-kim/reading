@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { saveReadingReport, generateBookAIStuff, fetchReadingReports, searchAladinBooks, validatePassword } from "./actions";
+import { saveReadingReport, generateBookAIStuff, fetchReadingReports, searchAladinBooks, validatePassword, getRecommendedBooks } from "./actions";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -116,6 +116,7 @@ export default function DashboardPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState(false);
+  const [recommendedBooks, setRecommendedBooks] = useState<any[]>([]);
 
   const toLocalISOString = (date?: Date | string | number) => {
     if (!date) return "";
@@ -185,6 +186,12 @@ export default function DashboardPage() {
     const res = await fetchReadingReports();
     if (res.success) {
       setLibraryData(res.data);
+    }
+    
+    // Also fetch recommendations
+    const recRes = await getRecommendedBooks();
+    if (recRes.success) {
+      setRecommendedBooks(recRes.items);
     }
     setIsDataLoading(false);
   };
@@ -484,6 +491,31 @@ export default function DashboardPage() {
                         <div className="mb-4 text-olive/20 flex justify-center"><Book size={64} /></div>
                         <p className="text-olive/40 font-black">아직 기록이 없어요. 첫 번째 감상문을 써보세요!</p>
                       </div>
+                  )}
+              </div>
+            </section>
+            <section className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200 mt-16 pb-12">
+              <div className="flex flex-col mb-8">
+                <h3 className="text-xl md:text-2xl font-black text-text-main tracking-tight flex items-center gap-2">청소년을 위한 추천 도서 ✨</h3>
+                <p className="text-xs md:text-sm text-olive/50 font-medium">지혜로운 어른으로 성장하는 길잡이가 되어줄 베스트 도서들이에요.</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 lg:gap-8">
+                  {recommendedBooks.map((b, i) => (
+                      <div key={i} className="animate-in fade-in zoom-in duration-700" style={{ animationDelay: `${i * 100}ms` }}>
+                         <div className="flex flex-col gap-3 group cursor-default h-full">
+                            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-olive/10 shadow-sm transition-all duration-500 transform group-hover:-translate-y-2 group-hover:shadow-xl">
+                               <img src={b.thumbnail} alt={b.title} className="object-cover w-full h-full" />
+                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                            </div>
+                            <div className="px-1">
+                               <h3 className="font-bold text-text-main text-xs lg:text-sm truncate leading-tight mb-0.5">{b.title}</h3>
+                               <p className="text-[10px] lg:text-xs text-olive/60 truncate font-medium">{b.author}</p>
+                            </div>
+                         </div>
+                      </div>
+                  ))}
+                  {recommendedBooks.length === 0 && !isDataLoading && (
+                      <p className="col-span-full text-center py-10 text-olive/30 font-bold">추천 도서를 불러오는 중입니다...</p>
                   )}
               </div>
             </section>
