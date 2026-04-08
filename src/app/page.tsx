@@ -460,7 +460,7 @@ export default function DashboardPage() {
             <Card className="mb-10 md:mb-14 bg-primary text-white relative overflow-hidden flex flex-col md:flex-row items-start md:items-center p-8 md:p-12 border-none shadow-2xl transform transition-all hover:shadow-primary/30 group">
               <div className="relative z-10 max-w-lg w-full">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 backdrop-blur-sm">오늘의 명언</div>
-                <h3 className="text-2xl md:text-3xl font-black mb-6 leading-normal tracking-tighter">"읽는 사람(Reader)은 내일의 리더(Leader)가 됩니다."<br/>오늘의 생각을 기록해볼까?</h3>
+                <h3 className="text-2xl md:text-3xl font-black mb-6 leading-normal tracking-tighter">\"읽는 사람(Reader)은 내일의 리더(Leader)가 됩니다.\"<br/>오늘의 생각을 기록해볼까?</h3>
                 <button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto bg-accent hover:bg-white hover:text-accent transform hover:scale-105 active:scale-95 text-white px-10 py-4 rounded-[2rem] font-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-accent/20">기록 시작하기 <ChevronRight size={20} /></button>
               </div>
               <div className="absolute -right-16 -bottom-16 md:right-12 md:top-1/2 md:-translate-y-1/2 opacity-10 md:opacity-20 pointer-events-none transform rotate-12 md:rotate-0 transition-transform duration-1000 group-hover:rotate-6 group-hover:scale-110">
@@ -557,10 +557,10 @@ export default function DashboardPage() {
                                     (getReportVal(r, ["작성자"], "writer") || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
                                   )}>{getReportVal(r, ["작성자"], "writer")}</span>
                           </div>
-                          <h4 className="text-lg font-black text-text-main truncate mb-0.5">{r["제목"]}</h4>
-                          <p className="text-xs font-bold text-olive/50 truncate mb-3">{r["작가"]}</p>
+                          <h4 className="text-lg font-black text-text-main truncate mb-0.5">{getReportVal(r, ["제목"], "title")}</h4>
+                          <p className="text-xs font-bold text-olive/50 truncate mb-3">{getReportVal(r, ["작가", "저자"], "author")}</p>
                           <div className="flex items-center justify-between">
-                            <div className="flex text-accent text-[10px]">{"★".repeat(Number(r["별점"]))}</div>
+                            <div className="flex text-accent text-[10px]">{"★".repeat(Number(getReportVal(r, ["별점", "평점"], "rating")) || 0)}</div>
                             <span className="text-primary font-black text-[10px] flex items-center gap-0.5">자세히 보기 <ChevronRight size={12} /></span>
                           </div>
                         </div>
@@ -614,7 +614,7 @@ export default function DashboardPage() {
                               <div className="relative p-8 md:p-10 bg-accent/5 rounded-[2.5rem] border border-accent/10 border-l-8 border-l-accent overflow-hidden group">
                                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-1000"><Star size={120} /></div>
                                  <p className="relative z-10 text-lg md:text-2xl text-text-main leading-relaxed font-black italic">
-                                    "{getReportVal(selectedReport, ["인상", "구절", "명언", "한 줄"], "quote") || "기록된 한 줄이 없어요."}"
+                                    \"{getReportVal(selectedReport, ["인상", "구절", "명언", "한 줄"], "quote") || "기록된 한 줄이 없어요."}\"
                                  </p>
                               </div>
                           </div>
@@ -656,119 +656,117 @@ export default function DashboardPage() {
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-primary/40 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-background-warm w-full h-full md:h-auto md:max-w-6xl md:max-h-[95vh] md:rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
-            <div className="px-6 py-5 md:px-12 md:py-8 border-b border-olive/5 flex items-center justify-between bg-white/50 backdrop-blur-md sticky top-0 z-20">
-              <div className="flex items-center gap-3">
-                 <div className="p-2 bg-primary rounded-xl text-white shadow-md"><SquarePen size={20} /></div>
-                 <h2 className="text-xl md:text-2xl font-black text-text-main tracking-tighter">{formData.originalTitle ? "기록 다듬기" : "새로운 시작하기"}</h2>
+            <div className="px-6 py-4 md:px-12 md:py-4 border-b border-olive/5 flex items-center justify-between bg-white/50 backdrop-blur-md sticky top-0 z-20">
+              <div className="flex items-center gap-2">
+                 <div className="p-1.5 bg-primary rounded-lg text-white"><SquarePen size={16} /></div>
+                 <h2 className="text-lg md:text-xl font-black text-text-main tracking-tighter">{formData.originalTitle ? \"기록 다듬기\" : \"새로운 시작하기\"}</h2>
               </div>
-              <button onClick={closeModal} className="p-3 bg-white/50 rounded-2xl text-olive/40 hover:text-error hover:bg-error/5 transition-all active:scale-90"><X size={24} /></button>
+              <button onClick={closeModal} className="p-2 bg-white/50 rounded-xl text-olive/40 hover:text-error hover:bg-error/5 transition-all active:scale-90"><X size={20} /></button>
             </div>
             
             <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
               {/* Sticky Top: Basic Book Info */}
-              <div className="px-6 py-8 md:px-12 md:py-10 bg-white/70 backdrop-blur-xl border-b border-olive/5 z-20 shadow-sm">
-                <div className="max-w-5xl mx-auto w-full space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                    <div className="md:col-span-1 space-y-2">
-                       <label className="text-[10px] font-black text-olive/30 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Calendar size={12} /> 작성 날짜</label>
-                       <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full px-5 py-3.5 bg-background-warm rounded-2xl border border-olive/5 text-xs font-bold text-text-main focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner" />
-                    </div>
-                    <div className="md:col-span-1 space-y-2">
-                       <label className="text-[10px] font-black text-olive/30 uppercase tracking-widest ml-1 flex items-center gap-1.5"><User size={12} /> 나의 이름</label>
-                       <select name="writer" value={formData.writer} onChange={handleInputChange} className="w-full px-5 py-3.5 bg-background-warm rounded-2xl border border-olive/5 focus:outline-none text-xs font-black text-primary shadow-inner appearance-none"><option value="민준">민준</option><option value="유준">유준</option></select>
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                      <label className="text-[10px] font-black text-olive/30 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Book size={12} /> 어떤 책을 읽었니? ✨</label>
-                      <div className="flex gap-2">
-                        <input type="text" name="title" required placeholder="책 제목을 입력해줘" value={formData.title} onChange={handleInputChange} className="flex-1 px-5 py-3.5 bg-background-warm rounded-2xl border border-olive/5 focus:outline-none text-xs font-black placeholder:text-olive/20 shadow-inner" />
-                        <button type="button" onClick={handleBookSearch} disabled={isSearchingBook} className="px-5 py-3.5 bg-accent hover:bg-accent/80 text-white font-black rounded-2xl text-[10px] transition-all active:scale-95 shadow-lg shadow-accent/20 flex items-center gap-2 shrink-0">{isSearchingBook ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <Search size={16} />} 표지찾기</button>
-                      </div>
-                    </div>
-                  </div>
+               <div className="px-6 py-5 md:px-12 md:py-6 bg-white/70 backdrop-blur-xl border-b border-olive/5 z-20 shadow-sm transition-all duration-500">
+                 <div className="max-w-5xl mx-auto w-full space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                     <div className="md:col-span-1 space-y-1">
+                        <label className="text-[9px] font-black text-olive/30 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Calendar size={10} /> 날짜</label>
+                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-background-warm rounded-xl border border-olive/5 text-[11px] font-bold text-text-main focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner" />
+                     </div>
+                     <div className="md:col-span-1 space-y-1">
+                        <label className="text-[9px] font-black text-olive/30 uppercase tracking-widest ml-1 flex items-center gap-1.5"><User size={10} /> 이름</label>
+                        <select name="writer" value={formData.writer} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-background-warm rounded-xl border border-olive/5 focus:outline-none text-[11px] font-black text-primary shadow-inner appearance-none"><option value=\"민준\">민준</option><option value=\"유준\">유준</option></select>
+                     </div>
+                     <div className="md:col-span-2 space-y-1">
+                       <label className="text-[9px] font-black text-olive/30 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Book size={10} /> 어떤 책이니? ✨</label>
+                       <div className="flex gap-2">
+                         <input type="text" name="title" required placeholder=\"책 제목을 입력해줘\" value={formData.title} onChange={handleInputChange} className=\"flex-1 px-4 py-2.5 bg-background-warm rounded-xl border border-olive/5 focus:outline-none text-[11px] font-black placeholder:text-olive/20 shadow-inner\" />
+                         <button type=\"button\" onClick={handleBookSearch} disabled={isSearchingBook} className=\"px-4 py-2.5 bg-accent hover:bg-accent/80 text-white font-black rounded-xl text-[9px] transition-all active:scale-95 shadow-lg shadow-accent/20 flex items-center gap-1.5 shrink-0\">{isSearchingBook ? <div className=\"w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin\" /> : <Search size={14} />} 찾기</button>
+                       </div>
+                     </div>
+                     <div className=\"md:col-span-2 space-y-1\">
+                       <label className=\"text-[9px] font-black text-olive/40 uppercase tracking-widest ml-1\">작가 이름</label>
+                       <input type=\"text\" name=\"author\" placeholder=\"글을 쓴 작가님 성함\" value={formData.author} onChange={handleInputChange} className=\"w-full px-4 py-2.5 bg-background-warm/50 rounded-xl border border-olive/5 focus:outline-none text-[11px] font-bold shadow-inner\" />
+                     </div>
+                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-olive/40 uppercase tracking-widest ml-1">작가 이름</label>
-                      <input type="text" name="author" placeholder="글을 쓴 작가님 성함" value={formData.author} onChange={handleInputChange} className="w-full px-5 py-3.5 bg-background-warm/50 rounded-2xl border border-olive/5 focus:outline-none text-xs font-bold shadow-inner" />
-                    </div>
-                    {bookResults.length > 0 && (
-                      <div className="p-3 bg-accent/5 rounded-[1.5rem] border border-accent/10 animate-in fade-in zoom-in duration-500 overflow-x-auto">
-                         <div className="flex gap-2 min-w-max pb-1">
+                   {bookResults.length > 0 && (
+                     <div className=\"p-2 bg-accent/5 rounded-xl border border-accent/10 animate-in fade-in zoom-in duration-500 overflow-x-auto\">
+                        <div className=\"flex gap-2 min-w-max pb-1\">
                           {bookResults.map((b:any, i:number) => (
                             <button 
                               key={i} 
-                              type="button" 
+                              type=\"button\" 
                               onClick={() => selectThumbnail(b.thumbnail, b.author, b.description)} 
-                              className="w-12 h-16 rounded-lg overflow-hidden border-2 border-transparent hover:border-accent transition-all shadow-md active:scale-95 shrink-0"
+                              className=\"w-10 h-14 rounded-lg overflow-hidden border-2 border-transparent hover:border-accent transition-all shadow-md active:scale-95 shrink-0\"
                             >
-                              <img src={b.thumbnail} className="w-full h-full object-cover" />
+                              <img src={b.thumbnail} className=\"w-full h-full object-cover\" />
                             </button>
                           ))}
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
+                 </div>
+               </div>
 
               {/* Scrollable Body: AI Coach & Report Content */}
-              <div className="flex-1 overflow-y-auto p-6 md:p-12 pb-32 md:pb-12 scroll-smooth bg-background-warm/30">
-                <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16">
+              <div className=\"flex-1 overflow-y-auto p-6 md:p-12 pb-32 md:pb-12 scroll-smooth bg-background-warm/30\">
+                <div className=\"max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16\">
                   {/* Left: AI Column */}
-                  <div className="space-y-10">
+                  <div className=\"space-y-10\">
                     {!aiCoach && !formData.originalTitle && (
-                      <div className="p-8 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl text-center space-y-6">
-                        <div className="w-16 h-16 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center mx-auto transform -rotate-3"><Trophy size={32} /></div>
-                        <h4 className="text-lg font-black text-text-main">심화 기록을 위해 AI 코칭을 시작해볼까?</h4>
-                        <p className="text-xs font-bold text-olive/50 leading-relaxed">책 내용을 바탕으로 퀴즈도 풀고<br/>AI 친구와 함께 더 깊은 생각을 나눠봐요!</p>
+                      <div className=\"p-8 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl text-center space-y-6\">
+                        <div className=\"w-16 h-16 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center mx-auto transform -rotate-3\"><Trophy size={32} /></div>
+                        <h4 className=\"text-lg font-black text-text-main\">심화 기록을 위해 AI 코칭을 시작해볼까?</h4>
+                        <p className=\"text-xs font-bold text-olive/50 leading-relaxed\">책 내용을 바탕으로 퀴즈도 풀고<br/>AI 친구와 함께 더 깊은 생각을 나눠봐요!</p>
                         <button 
-                          type="button"
+                          type=\"button\"
                           onClick={handleGenerateAICoach} 
                           disabled={isGeneratingAI} 
-                          className="w-full py-5 bg-gradient-to-r from-primary to-olive text-white font-black rounded-[2rem] shadow-2xl shadow-primary/20 flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95 transition-all text-base"
+                          className=\"w-full py-5 bg-gradient-to-r from-primary to-olive text-white font-black rounded-[2rem] shadow-2xl shadow-primary/20 flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95 transition-all text-base\"
                         >
-                          {isGeneratingAI ? "AI 코치가 책장을 넘겨보는 중..." : "AI 코칭 시작하기! ✨"}
+                          {isGeneratingAI ? \"AI 코치가 책장을 넘겨보는 중...\" : \"AI 코칭 시작하기! ✨\"}
                         </button>
                       </div>
                     )}
 
                     {aiCoach && (
-                      <div className="space-y-10">
-                        <section className="bg-white p-8 rounded-[2.5rem] border border-olive/10 shadow-xl shadow-olive/5 space-y-6">
-                           <div className="flex items-center justify-between">
-                              <h4 className="text-xs font-black text-accent uppercase tracking-widest flex items-center gap-2">
-                                <Star fill="#FF8400" size={16} /> 독서 이해도 확인 퀴즈
+                      <div className=\"space-y-10\">
+                        <section className=\"bg-white p-8 rounded-[2.5rem] border border-olive/10 shadow-xl shadow-olive/5 space-y-6\">
+                           <div className=\"flex items-center justify-between\">
+                              <h4 className=\"text-xs font-black text-accent uppercase tracking-widest flex items-center gap-2\">
+                                <Star fill=\"#FF8400\" size={16} /> 독서 이해도 확인 퀴즈
                               </h4>
-                              {formData.quizScore && <span className="px-3 py-1 bg-accent/10 text-accent font-black text-xs rounded-full">점수: {formData.quizScore}</span>}
+                              {formData.quizScore && <span className=\"px-3 py-1 bg-accent/10 text-accent font-black text-xs rounded-full\">점수: {formData.quizScore}</span>}
                            </div>
-                           <div className="space-y-8">
+                           <div className=\"space-y-8\">
                              {aiCoach.quizzes.map((q, qIndex) => {
                                const isQuizCompleted = aiCoach && quizAnswers.length === aiCoach.quizzes.length && !quizAnswers.includes(-1);
                                return (
-                                 <div key={qIndex} className="space-y-4">
-                                   <p className="text-sm font-black text-text-main flex gap-2">
-                                      <span className="text-accent">{qIndex + 1}.</span> {q.question}
+                                 <div key={qIndex} className=\"space-y-4\">
+                                   <p className=\"text-sm font-black text-text-main flex gap-2\">
+                                      <span className=\"text-accent\">{qIndex + 1}.</span> {q.question}
                                    </p>
-                                   <div className="grid grid-cols-1 gap-2.5">
+                                   <div className=\"grid grid-cols-1 gap-2.5\">
                                      {q.options.map((opt: string, oIndex: number) => {
                                        const isSelected = quizAnswers[qIndex] === oIndex;
                                        const isCorrect = q.answer === oIndex;
                                        return (
                                          <button
                                            key={oIndex}
-                                           type="button"
+                                           type=\"button\"
                                            disabled={isQuizCompleted}
                                            onClick={() => handleQuizAnswerChange(qIndex, oIndex)}
                                            className={cn(
-                                             "w-full text-left px-5 py-3 rounded-2xl text-xs font-bold transition-all border-2 flex items-center justify-between min-h-[56px]",
+                                             \"w-full text-left px-5 py-3 rounded-2xl text-xs font-bold transition-all border-2 flex items-center justify-between min-h-[56px]\",
                                              isQuizCompleted 
-                                               ? (isCorrect ? "bg-success/5 text-success border-success/30" : (isSelected ? "bg-error/5 text-error border-error/30" : "bg-transparent text-olive/20 border-transparent"))
-                                               : (isSelected ? "bg-accent text-white border-accent shadow-lg shadow-accent/20" : "bg-background-warm text-olive/70 hover:bg-white border-transparent")
+                                               ? (isCorrect ? \"bg-success/5 text-success border-success/30\" : (isSelected ? \"bg-error/5 text-error border-error/30\" : \"bg-transparent text-olive/20 border-transparent\"))
+                                               : (isSelected ? \"bg-accent text-white border-accent shadow-lg shadow-accent/20\" : \"bg-background-warm text-olive/70 hover:bg-white border-transparent\")
                                            )}
                                          >
-                                           <span className="leading-relaxed">{opt}</span>
-                                           {isQuizCompleted && isCorrect && <CheckCircle2 size={16} className="text-success" />}
-                                           {isQuizCompleted && isSelected && !isCorrect && <XCircle size={16} className="text-error" />}
+                                           <span className=\"leading-relaxed\">{opt}</span>
+                                           {isQuizCompleted && isCorrect && <CheckCircle2 size={16} className=\"text-success\" />}
+                                           {isQuizCompleted && isSelected && !isCorrect && <XCircle size={16} className=\"text-error\" />}
                                          </button>
                                        );
                                      })}
@@ -779,15 +777,15 @@ export default function DashboardPage() {
                            </div>
                         </section>
 
-                        <section className="bg-primary p-8 rounded-[2.5rem] shadow-2xl shadow-primary/30 text-white relative overflow-hidden group">
-                           <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-125 transition-transform duration-1000 rotate-12"><TrendingUp size={160} /></div>
-                           <h4 className="relative z-10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mb-6 opacity-70">
+                        <section className=\"bg-primary p-8 rounded-[2.5rem] shadow-2xl shadow-primary/30 text-white relative overflow-hidden group\">
+                           <div className=\"absolute top-0 right-0 p-6 opacity-10 group-hover:scale-125 transition-transform duration-1000 rotate-12\"><TrendingUp size={160} /></div>
+                           <h4 className=\"relative z-10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mb-6 opacity-70\">
                              <TrendingUp size={14} /> AI의 맞춤형 코칭 질문
                            </h4>
-                           <div className="relative z-10 space-y-4">
+                           <div className=\"relative z-10 space-y-4\">
                              {aiCoach.guides.map((g, i) => (
-                               <div key={i} className="flex gap-3 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 hover:bg-white/20 transition-all font-bold text-sm leading-relaxed">
-                                 <div className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0" />
+                               <div key={i} className=\"flex gap-3 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 hover:bg-white/20 transition-all font-bold text-sm leading-relaxed\">
+                                 <div className=\"w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0\" />
                                  {g}
                                </div>
                              ))}
@@ -798,29 +796,29 @@ export default function DashboardPage() {
                   </div>
                   
                   {/* Right: Write Column */}
-                  <div className="space-y-10">
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1">내 평점</label>
-                        <div className="flex gap-2 p-4 bg-white rounded-2xl border border-olive/5 shadow-inner w-max">
+                  <div className=\"space-y-10\">
+                      <div className=\"space-y-2\">
+                        <label className=\"text-xs font-black text-olive/40 uppercase tracking-widest ml-1\">내 평점</label>
+                        <div className=\"flex gap-2 p-4 bg-white rounded-2xl border border-olive/5 shadow-inner w-max\">
                            {[1,2,3,4,5].map(star => (
-                              <button key={star} type="button" onClick={() => setFormData(prev => ({...prev, rating: star}))} className={cn("text-3xl transition-transform active:scale-75", formData.rating >= star ? "text-accent" : "text-olive/10 hover:text-accent/40")}>★</button>
+                              <button key={star} type=\"button\" onClick={() => setFormData(prev => ({...prev, rating: star}))} className={cn(\"text-3xl transition-transform active:scale-75\", formData.rating >= star ? \"text-accent\" : \"text-olive/10 hover:text-accent/40\")}>★</button>
                            ))}
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Star size={12} className="text-accent" /> 가장 기억에 남는 한 줄 ✨</label>
-                        <input type="text" name="quote" value={formData.quote} onChange={handleInputChange} placeholder="멋진 문장이나 한 줄 평을 적어줘" className="w-full px-6 py-5 bg-white rounded-2xl border border-olive/5 focus:outline-none text-sm font-bold shadow-inner" />
+                      <div className=\"space-y-2\">
+                        <label className=\"text-xs font-black text-olive/40 uppercase tracking-widest ml-1 flex items-center gap-1.5\"><Star size={12} className=\"text-accent\" /> 가장 기억에 남는 한 줄 ✨</label>
+                        <input type=\"text\" name=\"quote\" value={formData.quote} onChange={handleInputChange} placeholder=\"멋진 문장이나 한 줄 평을 적어줘\" className=\"w-full px-6 py-5 bg-white rounded-2xl border border-olive/5 focus:outline-none text-sm font-bold shadow-inner\" />
                       </div>
                       
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1 flex items-center gap-1.5"><SquarePen size={12} className="text-primary" /> 나의 생각 주머니 🖋️</label>
-                        <textarea name="content" required value={formData.content} onChange={handleInputChange} placeholder="이 책을 읽고 어떤 생각이 들었니? 너의 마음을 솔직하게 적어봐!" className="w-full px-8 py-8 bg-white rounded-[2.5rem] border border-olive/5 focus:outline-none text-base font-bold placeholder:text-olive/20 shadow-xl shadow-olive/5 min-h-[350px] leading-relaxed" />
+                      <div className=\"space-y-2\">
+                        <label className=\"text-xs font-black text-olive/40 uppercase tracking-widest ml-1 flex items-center gap-1.5\"><SquarePen size={12} className=\"text-primary\" /> 나의 생각 주머니 🖋️</label>
+                        <textarea name=\"content\" required value={formData.content} onChange={handleInputChange} placeholder=\"이 책을 읽고 어떤 생각이 들었니? 너의 마음을 솔직하게 적어봐!\" className=\"w-full px-8 py-8 bg-white rounded-[2.5rem] border border-olive/5 focus:outline-none text-base font-bold placeholder:text-olive/20 shadow-xl shadow-olive/5 min-h-[350px] leading-relaxed\" />
                       </div>
                       
-                      <div className="pt-4">
-                         <button type="submit" disabled={isLoading} className="w-full py-6 bg-primary text-white font-black rounded-[2.5rem] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all text-xl">
-                           {isLoading ? <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" /> : <><Book size={24} /> 소중한 기록 보관하기</>}
+                      <div className=\"pt-4\">
+                         <button type=\"submit\" disabled={isLoading} className=\"w-full py-6 bg-primary text-white font-black rounded-[2.5rem] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all text-xl\">
+                           {isLoading ? <div className=\"w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin\" /> : <><Book size={24} /> 소중한 기록 보관하기</>}
                          </button>
                       </div>
                   </div>
