@@ -211,15 +211,25 @@ export default function DashboardPage() {
      loadData();
   };
 
-  const handleEditReport = (report: any) => {
-     const getVal = (keyStr: string) => {
-        const actualKey = Object.keys(report).find(k => k.includes(keyStr));
-        return actualKey ? report[actualKey] : "";
-     };
+  const getReportVal = (report: any, searchKeys: string[], englishKey?: string) => {
+    if (!report) return "";
+    // 1. Try English key first if provided
+    if (englishKey && report[englishKey]) return report[englishKey];
+    // 2. Try exact match for any search key
+    for (const sk of searchKeys) {
+        if (report[sk]) return report[sk];
+    }
+    // 3. Try fuzzy match (includes)
+    const actualKey = Object.keys(report).find(k => 
+        searchKeys.some(sk => k.includes(sk))
+    );
+    return actualKey ? report[actualKey] : "";
+  };
 
-     const title = getVal("제목") || "";
-     const writer = getVal("작성자") || "민준";
-     const rawDate = getVal("날짜");
+  const handleEditReport = (report: any) => {
+     const title = getReportVal(report, ["제목"], "title") || "";
+     const writer = getReportVal(report, ["작성자"], "writer") || "민준";
+     const rawDate = getReportVal(report, ["날짜"], "date");
 
      let formattedDate = "";
      if (rawDate) {
@@ -241,14 +251,14 @@ export default function DashboardPage() {
           date: formattedDate,
           writer: writer,
           title: title,
-          author: getVal("작가") || "",
-          thumbnail: getVal("표지") || "",
-          content: getVal("생각") || getVal("느낀점") || getVal("느낀 점") || "",
-          rating: Number(getVal("별점")) || 5,
-          summary: getVal("한 줄") || getVal("한줄") || "",
-          quote: getVal("인상") || getVal("구절") || "",
-          quizScore: getVal("퀴즈 점수") || getVal("퀴즈점수") || "",
-          memo: getVal("기타") || getVal("메모") || "",
+          author: getReportVal(report, ["작가", "저자"], "author") || "",
+          thumbnail: getReportVal(report, ["표지", "이미지", "썸네일"], "thumbnail") || "",
+          content: getReportVal(report, ["생각", "느낀점", "느낀 점", "내용"], "content") || "",
+          rating: Number(getReportVal(report, ["별점", "평점"], "rating")) || 5,
+          summary: getReportVal(report, ["한 줄", "한줄", "요약"], "summary") || "",
+          quote: getReportVal(report, ["인상", "구절", "명언", "한 줄"], "quote") || "",
+          quizScore: getReportVal(report, ["퀴즈 점수", "퀴즈점수", "점수"], "quizScore") || "",
+          memo: getReportVal(report, ["기타", "메모"], "memo") || "",
           originalTitle: title,
           originalWriter: writer,
           bookDescription: ""
@@ -518,19 +528,19 @@ export default function DashboardPage() {
                            ) : (
                                filteredLibraryData.map((row, idx) => (
                                    <tr key={idx} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => setSelectedReport(row)}>
-                                       <td className="px-10 py-6 text-olive/40 font-bold whitespace-nowrap">{(row["날짜"] || "").toString().split('T')[0]}</td>
+                                       <td className="px-10 py-6 text-olive/40 font-bold whitespace-nowrap">{(getReportVal(row, ["날짜"], "date") || "").toString().split('T')[0]}</td>
                                        <td className="px-10 py-6">
                                           <div className="flex items-center gap-4">
-                                             {row["표지"] && <img src={row["표지"]} className="w-10 h-14 object-cover rounded-lg shadow-md group-hover:scale-110 transition-transform" />}
-                                             <span className="text-text-main font-black group-hover:text-primary transition-colors">{row["제목"]}</span>
+                                             {getReportVal(row, ["표지", "이미지", "썸네일"], "thumbnail") && <img src={getReportVal(row, ["표지", "이미지", "썸네일"], "thumbnail")} className="w-10 h-14 object-cover rounded-lg shadow-md group-hover:scale-110 transition-transform" />}
+                                             <span className="text-text-main font-black group-hover:text-primary transition-colors">{getReportVal(row, ["제목"], "title")}</span>
                                           </div>
                                        </td>
-                                       <td className="px-10 py-6 text-olive/60 font-semibold truncate max-w-[150px]">{row["작가"]}</td>
+                                       <td className="px-10 py-6 text-olive/60 font-semibold truncate max-w-[150px]">{getReportVal(row, ["작가", "저자"], "author")}</td>
                                        <td className="px-10 py-6">
                                           <span className={cn(
                                              "px-4 py-1.5 rounded-full text-[10px] font-black tracking-tight",
-                                             (row["작성자"] || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
-                                          )}>{row["작성자"]}</span>
+                                             (getReportVal(row, ["작성자"], "writer") || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+                                          )}>{getReportVal(row, ["작성자"], "writer")}</span>
                                        </td>
                                        <td className="px-10 py-6 text-right"><div className="p-2 inline-flex bg-background-warm text-olive/20 group-hover:bg-primary group-hover:text-white rounded-xl transition-all"><ChevronRight size={18} /></div></td>
                                    </tr>
@@ -545,14 +555,14 @@ export default function DashboardPage() {
                     {isDataLoading && <div className="p-20 text-center text-olive/30 font-black animate-pulse">지혜를 불러오는 중... ✨</div>}
                     {!isDataLoading && filteredLibraryData.map((r, i) => (
                       <div key={i} className="p-5 active:bg-primary/5 transition-colors flex items-center gap-4" onClick={() => setSelectedReport(r)}>
-                        {r["표지"] && <img src={r["표지"]} className="w-20 h-28 object-cover rounded-2xl shadow-lg border-2 border-white" />}
+                        {getReportVal(r, ["표지", "이미지", "썸네일"], "thumbnail") && <img src={getReportVal(r, ["표지", "이미지", "썸네일"], "thumbnail")} className="w-20 h-28 object-cover rounded-2xl shadow-lg border-2 border-white" />}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-black text-olive/30">{r["날짜"]}</span>
+                            <span className="text-[10px] font-black text-olive/30">{getReportVal(r, ["날짜"], "date")}</span>
                             <span className={cn(
                                     "px-2 py-0.5 rounded-full text-[9px] font-black",
-                                    (r["작성자"] || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
-                                  )}>{r["작성자"]}</span>
+                                    (getReportVal(r, ["작성자"], "writer") || "").includes("민준") ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+                                  )}>{getReportVal(r, ["작성자"], "writer")}</span>
                           </div>
                           <h4 className="text-lg font-black text-text-main truncate mb-0.5">{r["제목"]}</h4>
                           <p className="text-xs font-bold text-olive/50 truncate mb-3">{r["작가"]}</p>
@@ -576,18 +586,18 @@ export default function DashboardPage() {
                   <button onClick={() => setSelectedReport(null)} className="absolute top-6 right-6 p-3 bg-white/80 backdrop-blur-md rounded-2xl text-olive/40 hover:text-primary transition-all z-20 active:scale-90"><X size={24} /></button>
                   <div className="flex-1 overflow-y-auto font-noto pb-24 md:pb-0">
                       <div className="h-64 md:h-80 bg-primary relative overflow-hidden shrink-0">
-                          {selectedReport["표지"] ? (
-                             <img src={selectedReport["표지"]} className="w-full h-full object-cover blur-3xl opacity-40 scale-150" />
+                          {getReportVal(selectedReport, ["표지", "이미지", "썸네일"], "thumbnail") ? (
+                             <img src={getReportVal(selectedReport, ["표지", "이미지", "썸네일"], "thumbnail")} className="w-full h-full object-cover blur-3xl opacity-40 scale-150" />
                           ) : (
                              <div className="w-full h-full bg-primary" />
                           )}
                           <div className="absolute inset-0 flex items-center justify-center p-8 md:p-12">
                              <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-10 w-full">
-                                {selectedReport["표지"] && <img src={selectedReport["표지"]} className="w-32 h-44 md:w-44 md:h-64 object-cover rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-white/30 transform transition-hover hover:scale-105 duration-500" />}
+                                {getReportVal(selectedReport, ["표지", "이미지", "썸네일"], "thumbnail") && <img src={getReportVal(selectedReport, ["표지", "이미지", "썸네일"], "thumbnail")} className="w-32 h-44 md:w-44 md:h-64 object-cover rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-white/30 transform transition-hover hover:scale-105 duration-500" />}
                                 <div className="text-center md:text-left text-white drop-shadow-lg">
-                                   <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest mb-4">{selectedReport["날짜"]}</span>
-                                   <h3 className="text-3xl md:text-5xl font-black mb-3 leading-tight tracking-tighter line-clamp-3">{selectedReport["제목"]}</h3>
-                                   <p className="text-lg md:text-xl font-bold opacity-80">{selectedReport["작가"]} 저</p>
+                                   <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest mb-4">{getReportVal(selectedReport, ["날짜"], "date")}</span>
+                                   <h3 className="text-3xl md:text-5xl font-black mb-3 leading-tight tracking-tighter line-clamp-3">{getReportVal(selectedReport, ["제목"], "title")}</h3>
+                                   <p className="text-lg md:text-xl font-bold opacity-80">{getReportVal(selectedReport, ["작가", "저자"], "author")} 저</p>
                                 </div>
                              </div>
                           </div>
@@ -596,11 +606,11 @@ export default function DashboardPage() {
                           <div className="grid grid-cols-2 gap-4 md:gap-8">
                              <div className="p-5 bg-background-warm rounded-[2rem] border border-olive/5 shadow-inner">
                                 <span className="text-[10px] font-black text-olive/30 uppercase block mb-2 tracking-widest">나의 평점</span>
-                                <div className="text-accent text-2xl drop-shadow-sm">{"★".repeat(Number(selectedReport["별점"]))}</div>
+                                <div className="text-accent text-2xl drop-shadow-sm">{"★".repeat(Number(getReportVal(selectedReport, ["별점", "평점"], "rating")) || 0)}</div>
                              </div>
                              <div className="p-5 bg-background-warm rounded-[2rem] border border-olive/5 shadow-inner">
                                 <span className="text-[10px] font-black text-olive/30 uppercase block mb-2 tracking-widest">기록한 사람</span>
-                                <div className="font-extrabold text-primary text-2xl">{selectedReport["작성자"]}</div>
+                                <div className="font-extrabold text-primary text-2xl">{getReportVal(selectedReport, ["작성자"], "writer")}</div>
                              </div>
                           </div>
                           
@@ -611,7 +621,7 @@ export default function DashboardPage() {
                               <div className="relative p-8 md:p-10 bg-accent/5 rounded-[2.5rem] border border-accent/10 border-l-8 border-l-accent overflow-hidden group">
                                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-1000"><Star size={120} /></div>
                                  <p className="relative z-10 text-lg md:text-2xl text-text-main leading-relaxed font-black italic">
-                                    "{selectedReport["인상 깊은 구절"] || selectedReport["한 줄 평"] || selectedReport["한 줄"] || "기록된 한 줄이 없어요."}"
+                                    "{getReportVal(selectedReport, ["인상", "구절", "명언", "한 줄"], "quote") || "기록된 한 줄이 없어요."}"
                                  </p>
                               </div>
                           </div>
@@ -622,12 +632,12 @@ export default function DashboardPage() {
                               </h4>
                               <div className="p-8 md:p-10 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl shadow-olive/5 min-h-[150px]">
                                  <p className="text-base md:text-lg text-olive/80 leading-relaxed font-bold whitespace-pre-wrap">
-                                     {selectedReport["생각 및 느낀점"] || selectedReport["느낀점"] || selectedReport["느낀 점"] || "아무런 생각이 기록되지 않았네요! 다음에 더 자세히 써볼까요?"}
+                                     {getReportVal(selectedReport, ["생각", "느낀점", "내용"], "content") || "아무런 생각이 기록되지 않았네요! 다음에 더 자세히 써볼까요?"}
                                  </p>
                               </div>
                           </div>
                           
-                          {selectedReport["퀴즈 점수"] && (
+                          {getReportVal(selectedReport, ["퀴즈", "점수"], "quizScore") && (
                              <div className="p-8 bg-success/5 rounded-[2.5rem] border border-success/20 flex items-center justify-between group">
                                 <div className="flex items-center gap-4">
                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-success transform group-hover:rotate-12 transition-transform"><Trophy size={32} /></div>
@@ -636,7 +646,7 @@ export default function DashboardPage() {
                                       <span className="text-sm font-bold text-success">책을 정말 꼼꼼히 읽었구나!</span>
                                    </div>
                                 </div>
-                                <span className="text-4xl font-black text-success tracking-tighter">{selectedReport["퀴즈 점수"]}</span>
+                                <span className="text-4xl font-black text-success tracking-tighter">{getReportVal(selectedReport, ["퀴즈", "점수"], "quizScore")}</span>
                              </div>
                           )}
                       </div>
