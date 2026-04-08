@@ -170,6 +170,38 @@ export async function getRecommendedBooks() {
   }
 }
 
+export async function getAdultRecommendedBooks() {
+  try {
+    const ttbKey = process.env.ALADIN_TTB_KEY;
+    if (!ttbKey) throw new Error("서버 설정 오류: ALADIN_TTB_KEY가 설정되지 않았습니다.");
+    
+    // Using Bestseller for general Adult books (SearchTarget=Book) - more reliable
+    const url = `https://www.aladin.co.kr/ttb/api/ItemList.aspx?ttbkey=${ttbKey}&QueryType=Bestseller&MaxResults=5&start=1&SearchTarget=Book&output=js&Version=20131101`;
+    
+    const response = await fetch(url, { next: { revalidate: 604800 } });
+    if (!response.ok) throw new Error("알라딘 API 응답 오류");
+    
+    const text = await response.text();
+    const data = JSON.parse(text);
+    
+    return { 
+      success: true, 
+      items: data.item?.map((item: any) => ({
+        title: item.title,
+        author: item.author,
+        thumbnail: item.cover,
+        publisher: item.publisher,
+        description: item.description,
+        pubDate: item.pubDate
+      })) || []
+    };
+  } catch (error: any) {
+    console.error("Adult Recommended Books Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+
 export async function validatePassword(password: string) {
   const correct = process.env.APP_PASSWORD || "1234";
   return { success: password === correct };

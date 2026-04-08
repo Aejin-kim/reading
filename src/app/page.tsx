@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { saveReadingReport, generateBookAIStuff, fetchReadingReports, searchAladinBooks, validatePassword, getRecommendedBooks } from "./actions";
+import { saveReadingReport, generateBookAIStuff, fetchReadingReports, searchAladinBooks, validatePassword, getRecommendedBooks, getAdultRecommendedBooks } from "./actions";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState(false);
   const [recommendedBooks, setRecommendedBooks] = useState<any[]>([]);
+  const [adultRecommendedBooks, setAdultRecommendedBooks] = useState<any[]>([]);
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
 
   const toLocalISOString = (date?: Date | string | number) => {
@@ -193,6 +194,10 @@ export default function DashboardPage() {
     const recRes = await getRecommendedBooks();
     if (recRes.success) {
       setRecommendedBooks(recRes.items);
+    }
+    const adultRes = await getAdultRecommendedBooks();
+    if (adultRes.success) {
+      setAdultRecommendedBooks(adultRes.items);
     }
     setIsDataLoading(false);
   };
@@ -515,8 +520,39 @@ export default function DashboardPage() {
                          </div>
                       </div>
                   ))}
-                  {recommendedBooks.length === 0 && !isDataLoading && (
-                      <p className="col-span-full text-center py-10 text-olive/30 font-bold">추천 도서를 불러오는 중입니다...</p>
+                  {isDataLoading && (
+                      <p className="col-span-full text-center py-10 text-olive/30 font-bold animate-pulse">아이들을 위한 도서 목록을 불러오는 중입니다... ✨</p>
+                  )}
+                  {!isDataLoading && recommendedBooks.length === 0 && (
+                      <p className="col-span-full text-center py-10 text-olive/20 font-bold">도서 목록을 가져오는 데 문제가 발생했습니다. 잠시 후 새로고침해 주세요.</p>
+                  )}
+              </div>
+            </section>
+            <section className="animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300 mt-20 pb-24">
+              <div className="flex flex-col mb-8">
+                <h3 className="text-xl md:text-2xl font-black text-text-main tracking-tight flex items-center gap-2">부모님을 위한 오늘의 문학 ☕</h3>
+                <p className="text-xs md:text-sm text-olive/50 font-medium">아이와 함께 읽으면 더 좋은, 어른들을 위한 한 모금의 지혜예요.</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 lg:gap-8">
+                  {adultRecommendedBooks.map((b, i) => (
+                      <div key={i} onClick={() => setSelectedRecommendation(b)} className="animate-in fade-in zoom-in duration-700 cursor-pointer" style={{ animationDelay: `${i * 100}ms` }}>
+                         <div className="flex flex-col gap-3 group h-full">
+                            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-olive/10 shadow-sm transition-all duration-500 transform group-hover:scale-[1.03] group-hover:shadow-2xl">
+                               <img src={b.thumbnail} alt={b.title} className="object-cover w-full h-full" />
+                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                            </div>
+                            <div className="px-1">
+                               <h3 className="font-bold text-text-main text-xs lg:text-sm truncate leading-tight mb-0.5">{b.title}</h3>
+                               <p className="text-[10px] lg:text-xs text-olive/60 truncate font-medium">{b.author}</p>
+                            </div>
+                         </div>
+                      </div>
+                  ))}
+                  {isDataLoading && (
+                      <p className="col-span-full text-center py-10 text-olive/30 font-bold animate-pulse">부모님을 위한 도서 목록을 불러오는 중입니다... ✨</p>
+                  )}
+                  {!isDataLoading && adultRecommendedBooks.length === 0 && (
+                      <p className="col-span-full text-center py-10 text-olive/20 font-bold">도서 목록을 가져오는 데 문제가 발생했습니다. 잠시 후 새로고침해 주세요.</p>
                   )}
               </div>
             </section>
