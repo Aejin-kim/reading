@@ -720,6 +720,10 @@ export default function DashboardPage() {
                                  <p className="text-base md:text-lg text-olive/80 leading-relaxed font-bold whitespace-pre-wrap">
                                      {getReportVal(selectedReport, ["생각", "느낀점", "내용"], "content") || "아무런 생각이 기록되지 않았네요! 다음에 더 자세히 써볼까요?"}
                                  </p>
+                                 <div className="mt-8 flex justify-end gap-3">
+                                    <span className="px-3 py-1 bg-olive/5 rounded-full text-[10px] font-black text-olive/40 uppercase tracking-widest">공백 포함: {(getReportVal(selectedReport, ["생각", "느낀점", "내용"], "content") || "").length}자</span>
+                                    <span className="px-3 py-1 bg-olive/5 rounded-full text-[10px] font-black text-olive/40 uppercase tracking-widest">공백 제외: {(getReportVal(selectedReport, ["생각", "느낀점", "내용"], "content") || "").replace(/\s/g, "").length}자</span>
+                                 </div>
                               </div>
                           </div>
                           
@@ -905,7 +909,13 @@ export default function DashboardPage() {
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1 flex items-center gap-1.5"><SquarePen size={12} className="text-primary" /> 나의 생각 주머니 🖋️</label>
+                        <label className="text-xs font-black text-olive/40 uppercase tracking-widest ml-1 flex items-center justify-between gap-1.5">
+                          <span className="flex items-center gap-1.5"><SquarePen size={12} className="text-primary" /> 나의 생각 주머니 🖋️</span>
+                          <div className="flex gap-2">
+                             <span className="text-[9px] font-black text-primary/40 bg-primary/5 px-2 py-0.5 rounded-full">공백 포함: {formData.content.length}자</span>
+                             <span className="text-[9px] font-black text-olive/30 bg-olive/5 px-2 py-0.5 rounded-full">공백 제외: {formData.content.replace(/\s/g, "").length}자</span>
+                          </div>
+                        </label>
                         <textarea name="content" required value={formData.content} onChange={handleInputChange} placeholder="이 책을 읽고 어떤 생각이 들었니? 너의 마음을 솔직하게 적어봐!" className="w-full px-8 py-8 bg-white rounded-[2.5rem] border border-olive/5 focus:outline-none text-base font-bold placeholder:text-olive/20 shadow-xl shadow-olive/5 min-h-[350px] leading-relaxed" />
                       </div>
                       
