@@ -881,7 +881,17 @@ export default function DashboardPage() {
                            </h4>
                            <div className="relative z-10 space-y-4">
                              {aiCoach.guides.map((g, i) => (
-                               <div key={i} className="flex gap-3 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 hover:bg-white/20 transition-all font-bold text-sm leading-relaxed">
+                               <div 
+                                 key={i} 
+                                 onClick={() => {
+                                   setFormData(prev => ({
+                                     ...prev,
+                                     content: prev.content ? `${prev.content}\n\n${g}\n` : `${g}\n`
+                                   }));
+                                   // Optional: Smooth scroll to the textarea might be nice but let's keep it simple first
+                                 }}
+                                 className="flex gap-3 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 hover:bg-white/20 transition-all font-bold text-sm leading-relaxed cursor-pointer active:scale-[0.98]"
+                               >
                                  <div className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0" />
                                  {g}
                                </div>
