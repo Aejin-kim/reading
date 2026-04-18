@@ -137,7 +137,7 @@ export default function DashboardPage() {
   const [currentQuote, setCurrentQuote] = useState(READING_QUOTES[0]);
   const [isEnglishMode, setIsEnglishMode] = useState(false);
   const [translationInput, setTranslationInput] = useState("");
-  const [translationResult, setTranslationResult] = useState("");
+  const [translationResult, setTranslationResult] = useState<any[] | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
 
   const toLocalISOString = (date?: Date | string | number) => {
@@ -254,7 +254,7 @@ export default function DashboardPage() {
     });
     setIsEnglishMode(false);
     setTranslationInput("");
-    setTranslationResult("");
+    setTranslationResult(null);
   };
 
   const handleOpenLibrary = async (writer?: string) => {
@@ -284,7 +284,7 @@ export default function DashboardPage() {
     setIsTranslating(true);
     const res = await translateToEnglish(translationInput);
     if (res.success) {
-      setTranslationResult(res.translation || "");
+      setTranslationResult(res.translation);
     } else {
       alert("번역 중 오류 발생: " + res.error);
     }
@@ -871,24 +871,33 @@ export default function DashboardPage() {
                                     </button>
                                  </div>
                                  
-                                 {translationResult && (
-                                    <div className="p-6 bg-accent/5 rounded-[2rem] border border-accent/10 animate-in fade-in slide-in-from-top-2 relative group-help">
-                                       <div className="flex justify-between items-start mb-2">
-                                          <span className="text-[10px] font-black text-accent uppercase tracking-widest">추천 영어 표현</span>
-                                          <button 
-                                             type="button"
-                                             onClick={() => {
-                                                const cleaned = translationResult.split('\n')[0].split('-')[0].trim();
-                                                setFormData(prev => ({ ...prev, content: prev.content + (prev.content ? " " : "") + cleaned }));
-                                             }}
-                                             className="px-2 py-1 bg-accent text-white rounded-lg text-[8px] font-bold hover:bg-accent/80 transition-all active:scale-90"
-                                          >
-                                             글에 넣기
-                                          </button>
-                                       </div>
-                                       <p className="text-sm font-bold text-text-main whitespace-pre-wrap leading-relaxed">
-                                          {translationResult}
-                                       </p>
+                                 {translationResult && Array.isArray(translationResult) && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                                       <span className="text-[10px] font-black text-accent uppercase tracking-widest ml-1">추천 영어 표현</span>
+                                       {translationResult.map((item, i) => (
+                                          <div key={i} className="p-6 bg-white rounded-[2rem] border border-accent/10 shadow-xl shadow-accent/5 space-y-3 group/item relative overflow-hidden">
+                                             <div className="flex justify-between items-start relative z-10">
+                                                <div>
+                                                   <h5 className="text-xl font-black text-accent tracking-tight">{item.word}</h5>
+                                                   <p className="text-sm font-bold text-olive/60">{item.meaning}</p>
+                                                </div>
+                                                <button 
+                                                   type="button"
+                                                   onClick={() => setFormData(prev => ({ ...prev, content: prev.content + (prev.content ? " " : "") + item.word }))}
+                                                   className="px-3 py-1.5 bg-accent text-white rounded-xl text-[10px] font-black shadow-lg shadow-accent/20 active:scale-95 transition-all opacity-0 group-hover/item:opacity-100"
+                                                >
+                                                   글에 넣기
+                                                </button>
+                                             </div>
+                                             <div className="p-4 bg-background-warm rounded-2xl border border-olive/5 relative z-10">
+                                                <p className="text-xs font-bold text-text-main leading-relaxed mb-1 italic">"{item.example}"</p>
+                                                <p className="text-[10px] font-medium text-olive/40">{item.exampleKo}</p>
+                                             </div>
+                                             <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none group-hover/item:scale-110 transition-transform duration-1000">
+                                                <Languages size={80} />
+                                             </div>
+                                          </div>
+                                       ))}
                                     </div>
                                  )}
                               </div>

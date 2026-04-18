@@ -209,13 +209,31 @@ export async function validatePassword(password: string) {
 
 export async function translateToEnglish(text: string) {
   try {
-    const prompt = `You are a helpful English-Korean dictionary for children. Translate the following text to English. 
-    Provide the most common English words or phrases and their meanings/examples briefly.
-    Text: "${text}"
-    Format: English Word/Phrase - Meaning/Usage`;
+    const prompt = `You are a helpful English-Korean dictionary for children. Translate the following text to English: "${text}"
+    Provide a list of 1-3 most relevant English words or phrases.
+    For each, provide:
+    1. The English word/phrase.
+    2. A simple Korean meaning.
+    3. One easy English example sentence.
+    4. The Korean translation of that example.
+
+    The output MUST be a strictly valid JSON array of objects like this:
+    [
+      {
+        "word": "courage",
+        "meaning": "용기",
+        "example": "It takes courage to say sorry.",
+        "exampleKo": "미안하다고 말하는 데는 용기가 필요해요."
+      }
+    ]
+    Return ONLY the JSON array.`;
     
     const result = await model.generateContent(prompt);
-    return { success: true, translation: result.response.text() };
+    const resultText = result.response.text();
+    const jsonMatch = resultText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error("Could not parse dictionary JSON.");
+    
+    return { success: true, translation: JSON.parse(jsonMatch[0]) };
   } catch (error: any) {
     console.error("Translation Error:", error);
     return { success: false, error: error.message };
