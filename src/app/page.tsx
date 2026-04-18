@@ -139,6 +139,7 @@ export default function DashboardPage() {
   const [translationInput, setTranslationInput] = useState("");
   const [translationResult, setTranslationResult] = useState<any[] | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [pendingQuizStart, setPendingQuizStart] = useState(false);
 
   const toLocalISOString = (date?: Date | string | number) => {
     if (!date) return "";
@@ -255,6 +256,7 @@ export default function DashboardPage() {
     setIsEnglishMode(false);
     setTranslationInput("");
     setTranslationResult(null);
+    setPendingQuizStart(false);
   };
 
   const handleOpenLibrary = async (writer?: string) => {
@@ -312,8 +314,26 @@ export default function DashboardPage() {
           memo: getReportVal(report, ["기타", "메모"], "memo") || "",
           originalTitle: title,
           originalWriter: writer,
-          bookDescription: ""
+          bookDescription: getReportVal(report, ["설명", "요약"], "bookDescription") || ""
      });
+     
+     // Populate existing AI coach data if available
+     const existingQuizzes = getReportVal(report, ["quizzes", "퀴즈", "퀴즈내용"], "quizzes");
+     const existingAnswers = getReportVal(report, ["quizAnswers", "퀴즈정답", "정답목록"], "quizAnswers");
+     
+     if (existingQuizzes && existingQuizzes !== "[]" && existingQuizzes !== "{}") {
+        try {
+           const parsedQuizzes = typeof existingQuizzes === 'string' ? JSON.parse(existingQuizzes) : existingQuizzes;
+           const parsedAnswers = typeof existingAnswers === 'string' ? JSON.parse(existingAnswers) : existingAnswers;
+           setAICoach({ quizzes: parsedQuizzes, guides: [] });
+           setQuizAnswers(parsedAnswers || []);
+        } catch (e) {
+           console.error("Failed to parse existing quiz data:", e);
+        }
+     } else {
+        setAICoach(null);
+        setQuizAnswers([]);
+     }
      
      setSelectedReport(null);
      setIsModalOpen(true);
@@ -339,13 +359,12 @@ export default function DashboardPage() {
     }
   };
 
-  const handleGenerateAICoach = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!formData.title) return alert("먼저 책 제목을 입력해주세요!");
+  const generateQuiz = async (title: string, author: string, description: string) => {
+    if (!title) return alert("먼저 책 제목을 입력해주세요!");
     
     setIsGeneratingAI(true);
     try {
-        const response = await generateBookAIStuff(formData.title, formData.author, formData.bookDescription);
+        const response = await generateBookAIStuff(title, author, description);
         if (response.success) {
             setAICoach({ quizzes: response.quizzes, guides: response.guides });
             setQuizAnswers(new Array(response.quizzes.length).fill(-1));
@@ -358,6 +377,18 @@ export default function DashboardPage() {
         setIsGeneratingAI(false);
     }
   };
+
+  const handleGenerateAICoach = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    generateQuiz(formData.title, formData.author, formData.bookDescription);
+  };
+
+  useEffect(() => {
+    if (isModalOpen && pendingQuizStart && formData.title) {
+        setPendingQuizStart(false);
+        generateQuiz(formData.title, formData.author, formData.bookDescription);
+    }
+  }, [isModalOpen, pendingQuizStart, formData.title]);
 
   const handleBookSearch = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -750,16 +781,108 @@ export default function DashboardPage() {
                               </div>
                           </div>
                           
-                          {getReportVal(selectedReport, ["퀴즈", "점수"], "quizScore") && (
-                             <div className="p-8 bg-success/5 rounded-[2.5rem] border border-success/20 flex items-center justify-between group">
-                                <div className="flex items-center gap-4">
-                                   <div className="p-4 bg-white rounded-2xl shadow-sm text-success transform group-hover:rotate-12 transition-transform"><Trophy size={32} /></div>
-                                   <div>
-                                      <p className="text-xs font-black text-success/50 uppercase tracking-widest leading-none mb-1">독서 퀴즈 점수</p>
-                                      <span className="text-sm font-bold text-success">책을 정말 꼼꼼히 읽었구나!</span>
+                          {/* Quiz Results Section */}
+                          {getReportVal(selectedReport, ["퀴즈", "점수"], "quizScore") ? (
+                             <div className="space-y-6">
+                                <h4 className="flex items-center gap-2 font-black text-text-main text-lg tracking-tight">
+                                   <Trophy className="text-success" size={20} /> 독서 퀴즈 복기하기
+                                </h4>
+                                <div className="bg-success/5 rounded-[2.5rem] border border-success/10 overflow-hidden divide-y divide-success/10">
+                                   <div className="p-8 flex items-center justify-between bg-white/50 backdrop-blur-sm">
+                                      <div className="flex items-center gap-4">
+                                         <div className="p-4 bg-white rounded-2xl shadow-sm text-success transform rotate-3"><Trophy size={32} /></div>
+                                         <div>
+                                            <p className="text-xs font-black text-success/50 uppercase tracking-widest leading-none mb-1">최종 점수</p>
+                                            <span className="text-sm font-bold text-success">정말 꼼꼼하게 읽었구나! 다시 한 번 확인해볼까?</span>
+                                         </div>
+                                      </div>
+                                      <span className="text-4xl font-black text-success tracking-tighter">{getReportVal(selectedReport, ["퀴즈", "점수"], "quizScore")}</span>
+                                   </div>
+                                   
+                                   <div className="p-8 space-y-8">
+                                      {(() => {
+                                         try {
+                                            const quizzesRaw = getReportVal(selectedReport, ["quizzes", "퀴즈", "퀴즈내용"], "quizzes");
+                                            const answersRaw = getReportVal(selectedReport, ["quizAnswers", "퀴즈정답", "정답목록"], "quizAnswers");
+                                            
+                                            if (!quizzesRaw || quizzesRaw === "[]" || quizzesRaw === "{}") return null;
+                                            
+                                            const quizzes = typeof quizzesRaw === 'string' ? JSON.parse(quizzesRaw) : quizzesRaw;
+                                            const answers = typeof answersRaw === 'string' ? JSON.parse(answersRaw) : answersRaw;
+                                            
+                                            if (!Array.isArray(quizzes)) return null;
+                                            
+                                            return quizzes.map((q: any, qIdx: number) => {
+                                               const userAns = answers?.[qIdx];
+                                               const isCorrect = q.answer === userAns;
+                                               return (
+                                                  <div key={qIdx} className="space-y-4">
+                                                     <p className="text-sm font-black text-text-main flex gap-2">
+                                                        <span className="text-success">{qIdx + 1}.</span> {q.question}
+                                                     </p>
+                                                     <div className="grid grid-cols-1 gap-2">
+                                                        {q.options.map((opt: string, oIdx: number) => {
+                                                           const isUserSelected = userAns === oIdx;
+                                                           const isActualCorrect = q.answer === oIdx;
+                                                           return (
+                                                              <div 
+                                                                 key={oIdx} 
+                                                                 className={cn(
+                                                                    "px-5 py-3 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-between",
+                                                                    isActualCorrect ? "bg-success/5 border-success/20 text-success" : 
+                                                                    (isUserSelected ? "bg-error/5 border-error/20 text-error" : "bg-white/50 border-transparent text-olive/40")
+                                                                 )}
+                                                              >
+                                                                 {opt}
+                                                                 {isActualCorrect && <CheckCircle2 size={14} />}
+                                                                 {isUserSelected && !isActualCorrect && <XCircle size={14} />}
+                                                              </div>
+                                                           );
+                                                        })}
+                                                     </div>
+                                                  </div>
+                                               );
+                                            });
+                                         } catch (e) {
+                                            return <p className="text-xs text-olive/30 font-bold italic">퀴즈 상세 내용을 불러올 수 없습니다.</p>;
+                                         }
+                                      })()}
+                                   </div>
+                                   <div className="p-8 bg-success/5 border-t border-success/10 flex justify-center">
+                                      <button 
+                                         onClick={() => {
+                                            const r = selectedReport;
+                                            setSelectedReport(null);
+                                            setPendingQuizStart(true);
+                                            handleEditReport(r);
+                                         }}
+                                         className="px-8 py-3 bg-white text-success border border-success/20 font-black rounded-2xl shadow-sm hover:bg-success hover:text-white transition-all text-xs flex items-center gap-2"
+                                      >
+                                         퀴즈 다시 도전하기! 🎮 <ChevronRight size={14} />
+                                      </button>
                                    </div>
                                 </div>
-                                <span className="text-4xl font-black text-success tracking-tighter">{getReportVal(selectedReport, ["퀴즈", "점수"], "quizScore")}</span>
+                             </div>
+                          ) : (
+                             <div className="p-10 bg-accent/5 rounded-[2.5rem] border-2 border-dashed border-accent/20 flex flex-col items-center text-center gap-6 animate-in zoom-in duration-500">
+                                <div className="w-20 h-20 bg-white rounded-[2rem] shadow-xl text-accent flex items-center justify-center animate-bounce-short">
+                                   <Trophy size={40} strokeWidth={2.5} />
+                                </div>
+                                <div className="space-y-2">
+                                   <h4 className="text-xl md:text-2xl font-black text-text-main tracking-tighter">아직 독서 퀴즈에 도전하지 않았어요! 😲</h4>
+                                   <p className="text-sm font-bold text-olive/50 leading-relaxed">내가 읽은 책 내용을 얼마나 잘 알고 있을지<br/>지금 바로 확인해보러 갈까? 너무 재밌을 거야!</p>
+                                </div>
+                                <button 
+                                   onClick={() => {
+                                      const r = selectedReport;
+                                      setSelectedReport(null);
+                                      setPendingQuizStart(true);
+                                      handleEditReport(r);
+                                   }}
+                                   className="px-12 py-5 bg-accent text-white font-black rounded-[2.5rem] shadow-2xl shadow-accent/30 hover:-translate-y-1 active:scale-95 transition-all text-lg flex items-center gap-3"
+                                >
+                                  재미있는 퀴즈 풀기! 🎮 <ChevronRight size={20} />
+                                </button>
                              </div>
                           )}
                       </div>
@@ -929,19 +1052,40 @@ export default function DashboardPage() {
                         </div>
                      ) : (
                         <>
-                          {!aiCoach && !formData.originalTitle && (
-                            <div className="p-8 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl text-center space-y-6">
-                              <div className="w-16 h-16 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center mx-auto transform -rotate-3"><Trophy size={32} /></div>
-                              <h4 className="text-lg font-black text-text-main">심화 기록을 위해 AI 코칭을 시작해볼까?</h4>
-                              <p className="text-xs font-bold text-olive/50 leading-relaxed">책 내용을 바탕으로 퀴즈도 풀고<br/>AI 친구와 함께 더 깊은 생각을 나눠봐요!</p>
-                              <button 
-                                type="button"
-                                onClick={handleGenerateAICoach} 
-                                disabled={isGeneratingAI} 
-                                className="w-full py-5 bg-gradient-to-r from-primary to-olive text-white font-black rounded-[2rem] shadow-2xl shadow-primary/20 flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95 transition-all text-base"
-                              >
-                                {isGeneratingAI ? "AI 코치가 책장을 넘겨보는 중..." : "AI 코칭 시작하기! ✨"}
-                              </button>
+                           {isGeneratingAI && (
+                              <div className="p-10 bg-white rounded-[3rem] border-2 border-primary/20 shadow-2xl text-center space-y-8 animate-in fade-in zoom-in duration-500 mb-10">
+                                 <div className="relative w-24 h-24 mx-auto">
+                                    <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+                                    <div className="relative bg-white p-6 rounded-[2rem] text-primary shadow-xl flex items-center justify-center">
+                                       <Trophy size={48} className="animate-bounce" />
+                                    </div>
+                                 </div>
+                                 <div className="space-y-3">
+                                    <h4 className="text-2xl font-black text-text-main tracking-tighter font-noto">잠시만 기다려줘! 🤗</h4>
+                                    <p className="text-sm font-bold text-olive/60 leading-relaxed font-noto">AI 친구가 "{formData.title}" 책장을 넘기며<br/><span className="text-primary font-black">재미있는 퀴즈</span>를 생각하고 있어!</p>
+                                 </div>
+                                 <div className="flex justify-center gap-2">
+                                    {[0, 1, 2].map((i) => (
+                                       <div key={i} className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />
+                                    ))}
+                                 </div>
+                              </div>
+                           )}
+                           {!aiCoach && !isGeneratingAI && !formData.originalTitle && (
+                            <div className="p-8 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl text-center space-y-6 animate-in fade-in zoom-in duration-500">
+                               <div className="w-20 h-20 bg-accent/10 text-accent rounded-[2rem] flex items-center justify-center mx-auto transform -rotate-3 shadow-inner"><Trophy size={40} strokeWidth={2.5} /></div>
+                               <div className="space-y-2">
+                                 <h4 className="text-xl font-black text-text-main tracking-tighter">두근두근 독서 퀴즈에 도전해봐! 🎮</h4>
+                                 <p className="text-xs font-bold text-olive/50 leading-relaxed">책 내용을 얼마나 잘 기억하고 있을까?<br/>AI 친구가 내준 퀴즈를 풀면 지혜가 쑥쑥 자라요!</p>
+                               </div>
+                               <button 
+                                 type="button"
+                                 onClick={handleGenerateAICoach} 
+                                 disabled={isGeneratingAI} 
+                                 className="w-full py-6 bg-gradient-to-r from-accent to-primary text-white font-black rounded-[2.5rem] shadow-2xl shadow-accent/20 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all text-lg"
+                               >
+                                 {isGeneratingAI ? "AI 친구가 문제를 만드는 중... ⏳" : "퀴즈 시작하기! ✨"}
+                               </button>
                             </div>
                           )}
                         </>
