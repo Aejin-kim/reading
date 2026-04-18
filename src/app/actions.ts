@@ -206,3 +206,18 @@ export async function validatePassword(password: string) {
   const correct = process.env.APP_PASSWORD || "1234";
   return { success: password === correct };
 }
+
+export async function translateToEnglish(text: string) {
+  try {
+    const prompt = `You are a helpful English-Korean dictionary for children. Translate the following text to English. 
+    Provide the most common English words or phrases and their meanings/examples briefly.
+    Text: "${text}"
+    Format: English Word/Phrase - Meaning/Usage`;
+    
+    const result = await model.generateContent(prompt);
+    return { success: true, translation: result.response.text() };
+  } catch (error: any) {
+    console.error("Translation Error:", error);
+    return { success: false, error: error.message };
+  }
+}

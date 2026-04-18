@@ -21,11 +21,12 @@ import {
   XCircle,
   Menu,
   Lock,
-  Calendar
+  Calendar,
+  Languages
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { saveReadingReport, generateBookAIStuff, fetchReadingReports, searchAladinBooks, validatePassword, getRecommendedBooks, getAdultRecommendedBooks } from "./actions";
+import { saveReadingReport, generateBookAIStuff, fetchReadingReports, searchAladinBooks, validatePassword, getRecommendedBooks, getAdultRecommendedBooks, translateToEnglish } from "./actions";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -134,6 +135,10 @@ export default function DashboardPage() {
   const [adultRecommendedBooks, setAdultRecommendedBooks] = useState<any[]>([]);
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
   const [currentQuote, setCurrentQuote] = useState(READING_QUOTES[0]);
+  const [isEnglishMode, setIsEnglishMode] = useState(false);
+  const [translationInput, setTranslationInput] = useState("");
+  const [translationResult, setTranslationResult] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const toLocalISOString = (date?: Date | string | number) => {
     if (!date) return "";
@@ -247,6 +252,9 @@ export default function DashboardPage() {
         originalWriter: "",
         bookDescription: ""
     });
+    setIsEnglishMode(false);
+    setTranslationInput("");
+    setTranslationResult("");
   };
 
   const handleOpenLibrary = async (writer?: string) => {
@@ -268,6 +276,19 @@ export default function DashboardPage() {
         searchKeys.some(sk => k.includes(sk))
     );
     return actualKey ? report[actualKey] : "";
+  };
+
+  const handleTranslate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!translationInput) return;
+    setIsTranslating(true);
+    const res = await translateToEnglish(translationInput);
+    if (res.success) {
+      setTranslationResult(res.translation || "");
+    } else {
+      alert("번역 중 오류 발생: " + res.error);
+    }
+    setIsTranslating(false);
   };
 
   const handleEditReport = (report: any) => {
@@ -443,7 +464,8 @@ export default function DashboardPage() {
       <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm h-18 bg-white/90 backdrop-blur-xl border border-olive/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] z-50 flex items-center justify-around px-2 animate-in slide-in-from-bottom-10 duration-1000">
          <SidebarItem icon={LayoutDashboard} label="홈" active={!isLibraryOpen} onClick={() => { setIsLibraryOpen(false); setFilterWriter(null); }} mobile />
          <SidebarItem icon={Library} label="서재" active={isLibraryOpen} onClick={() => handleOpenLibrary()} mobile />
-         <SidebarItem icon={SquarePen} label="기록" onClick={() => setIsModalOpen(true)} mobile />
+         <SidebarItem icon={SquarePen} label="기록" onClick={() => { setIsEnglishMode(false); setIsModalOpen(true); }} mobile />
+         <SidebarItem icon={Languages} label="영어 기록" onClick={() => { setIsEnglishMode(true); setIsModalOpen(true); }} mobile />
          <SidebarItem icon={Settings} label="설정" mobile />
       </div>
 
@@ -458,7 +480,8 @@ export default function DashboardPage() {
         <nav className="flex-1 space-y-2">
           <SidebarItem icon={LayoutDashboard} label="홈 대시보드" active={!isLibraryOpen} onClick={() => { setIsLibraryOpen(false); setFilterWriter(null); }} />
           <SidebarItem icon={Library} label="나의 서재" active={isLibraryOpen} onClick={() => handleOpenLibrary()} />
-          <SidebarItem icon={SquarePen} label="감상문 작성" onClick={() => setIsModalOpen(true)} />
+          <SidebarItem icon={SquarePen} label="감상문 작성" onClick={() => { setIsEnglishMode(false); setIsModalOpen(true); }} />
+          <SidebarItem icon={Languages} label="영어 감상문 작성" onClick={() => { setIsEnglishMode(true); setIsModalOpen(true); }} />
           <SidebarItem icon={Trophy} label="독서 챌린지" />
           <SidebarItem icon={Settings} label="환경 설정" />
         </nav>
@@ -755,8 +778,12 @@ export default function DashboardPage() {
           <div className="bg-background-warm w-full h-full md:h-auto md:max-w-6xl md:max-h-[95vh] md:rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
             <div className="px-6 py-4 md:px-12 md:py-4 border-b border-olive/5 flex items-center justify-between bg-white/50 backdrop-blur-md sticky top-0 z-20">
               <div className="flex items-center gap-2">
-                 <div className="p-1.5 bg-primary rounded-lg text-white"><SquarePen size={16} /></div>
-                 <h2 className="text-lg md:text-xl font-black text-text-main tracking-tighter">{formData.originalTitle ? "기록 다듬기" : "새로운 시작하기"}</h2>
+                 <div className={cn("p-1.5 rounded-lg text-white", isEnglishMode ? "bg-accent" : "bg-primary")}>
+                    {isEnglishMode ? <Languages size={16} /> : <SquarePen size={16} />}
+                 </div>
+                 <h2 className="text-lg md:text-xl font-black text-text-main tracking-tighter">
+                    {isEnglishMode ? "English Reading Journal" : (formData.originalTitle ? "기록 다듬기" : "새로운 시작하기")}
+                 </h2>
               </div>
               <button onClick={closeModal} className="p-2 bg-white/50 rounded-xl text-olive/40 hover:text-error hover:bg-error/5 transition-all active:scale-90"><X size={20} /></button>
             </div>
@@ -810,22 +837,106 @@ export default function DashboardPage() {
               <div className="flex-1 overflow-y-auto p-6 md:p-12 pb-32 md:pb-12 scroll-smooth bg-background-warm/30">
                 <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16">
                   {/* Left: AI Column */}
-                  <div className="space-y-10">
-                    {!aiCoach && !formData.originalTitle && (
-                      <div className="p-8 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl text-center space-y-6">
-                        <div className="w-16 h-16 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center mx-auto transform -rotate-3"><Trophy size={32} /></div>
-                        <h4 className="text-lg font-black text-text-main">심화 기록을 위해 AI 코칭을 시작해볼까?</h4>
-                        <p className="text-xs font-bold text-olive/50 leading-relaxed">책 내용을 바탕으로 퀴즈도 풀고<br/>AI 친구와 함께 더 깊은 생각을 나눠봐요!</p>
-                        <button 
-                          type="button"
-                          onClick={handleGenerateAICoach} 
-                          disabled={isGeneratingAI} 
-                          className="w-full py-5 bg-gradient-to-r from-primary to-olive text-white font-black rounded-[2rem] shadow-2xl shadow-primary/20 flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95 transition-all text-base"
-                        >
-                          {isGeneratingAI ? "AI 코치가 책장을 넘겨보는 중..." : "AI 코칭 시작하기! ✨"}
-                        </button>
-                      </div>
-                    )}
+                   <div className="space-y-10">
+                     {isEnglishMode ? (
+                        <div className="space-y-8">
+                           <section className="bg-white p-8 rounded-[2.5rem] border border-olive/10 shadow-xl space-y-6">
+                              <h4 className="text-xs font-black text-accent uppercase tracking-widest flex items-center gap-2">
+                                <Languages size={16} /> 단어/문장 사전 도우미 📖
+                              </h4>
+                              <p className="text-[11px] font-bold text-olive/50 leading-relaxed">궁금한 단어나 문장을 한글로 적어보세요!<br/>영어로 어떻게 표현하는지 바로 알려줄게요.</p>
+                              
+                               <div className="space-y-4">
+                                 <div className="flex gap-2">
+                                    <input 
+                                       type="text" 
+                                       value={translationInput} 
+                                       onChange={(e) => setTranslationInput(e.target.value)}
+                                       onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                             e.preventDefault();
+                                             handleTranslate(e as any);
+                                          }
+                                       }}
+                                       placeholder="예: '용기', '나는 감동받았다'" 
+                                       className="flex-1 px-5 py-3 bg-background-warm rounded-2xl border border-olive/5 focus:outline-none text-xs font-bold"
+                                    />
+                                    <button 
+                                       type="button" 
+                                       onClick={(e) => handleTranslate(e as any)}
+                                       disabled={isTranslating}
+                                       className="px-6 py-3 bg-accent text-white font-black rounded-2xl text-[10px] shadow-lg shadow-accent/20 active:scale-95 transition-all"
+                                    >
+                                       {isTranslating ? "찾는 중..." : "찾기"}
+                                    </button>
+                                 </div>
+                                 
+                                 {translationResult && (
+                                    <div className="p-6 bg-accent/5 rounded-[2rem] border border-accent/10 animate-in fade-in slide-in-from-top-2 relative group-help">
+                                       <div className="flex justify-between items-start mb-2">
+                                          <span className="text-[10px] font-black text-accent uppercase tracking-widest">추천 영어 표현</span>
+                                          <button 
+                                             type="button"
+                                             onClick={() => {
+                                                const cleaned = translationResult.split('\n')[0].split('-')[0].trim();
+                                                setFormData(prev => ({ ...prev, content: prev.content + (prev.content ? " " : "") + cleaned }));
+                                             }}
+                                             className="px-2 py-1 bg-accent text-white rounded-lg text-[8px] font-bold hover:bg-accent/80 transition-all active:scale-90"
+                                          >
+                                             글에 넣기
+                                          </button>
+                                       </div>
+                                       <p className="text-sm font-bold text-text-main whitespace-pre-wrap leading-relaxed">
+                                          {translationResult}
+                                       </p>
+                                    </div>
+                                 )}
+                              </div>
+                           </section>
+                           
+                           <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10">
+                              <h5 className="text-[10px] font-black text-primary uppercase tracking-widest mb-4">함께 쓰면 좋은 영어 표현 📝</h5>
+                              <div className="grid grid-cols-1 gap-2">
+                                 {[
+                                    { en: "I liked this book because...", ko: "왜냐하면 이 책은..." },
+                                    { en: "My favorite part was...", ko: "가장 좋았던 부분은..." },
+                                    { en: "The main character is...", ko: "주인공은..." },
+                                    { en: "This story is about...", ko: "이 이야기는 ..." },
+                                    { en: "I felt happy when...", ko: "언제 기뻤냐면..." },
+                                    { en: "I recommend this book!", ko: "이 책을 추천해요!" }
+                                 ].map((item, idx) => (
+                                    <button 
+                                       key={idx}
+                                       type="button"
+                                       onClick={() => setFormData(prev => ({ ...prev, content: prev.content + (prev.content ? "\n" : "") + item.en }))}
+                                       className="text-left p-3 bg-white/60 hover:bg-white rounded-xl border border-primary/5 transition-all hover:shadow-sm group/btn"
+                                    >
+                                       <div className="text-[11px] font-black text-primary group-hover/btn:translate-x-1 transition-transform">{item.en}</div>
+                                       <div className="text-[9px] font-bold text-olive/40">{item.ko}</div>
+                                    </button>
+                                 ))}
+                              </div>
+                           </div>
+                        </div>
+                     ) : (
+                        <>
+                          {!aiCoach && !formData.originalTitle && (
+                            <div className="p-8 bg-white rounded-[2.5rem] border border-olive/10 shadow-xl text-center space-y-6">
+                              <div className="w-16 h-16 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center mx-auto transform -rotate-3"><Trophy size={32} /></div>
+                              <h4 className="text-lg font-black text-text-main">심화 기록을 위해 AI 코칭을 시작해볼까?</h4>
+                              <p className="text-xs font-bold text-olive/50 leading-relaxed">책 내용을 바탕으로 퀴즈도 풀고<br/>AI 친구와 함께 더 깊은 생각을 나눠봐요!</p>
+                              <button 
+                                type="button"
+                                onClick={handleGenerateAICoach} 
+                                disabled={isGeneratingAI} 
+                                className="w-full py-5 bg-gradient-to-r from-primary to-olive text-white font-black rounded-[2rem] shadow-2xl shadow-primary/20 flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95 transition-all text-base"
+                              >
+                                {isGeneratingAI ? "AI 코치가 책장을 넘겨보는 중..." : "AI 코칭 시작하기! ✨"}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                     )}
 
                     {aiCoach && (
                       <div className="space-y-10">
