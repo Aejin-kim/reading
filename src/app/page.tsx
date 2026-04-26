@@ -297,6 +297,12 @@ export default function DashboardPage() {
      const title = getReportVal(report, ["제목"], "title") || "";
      const writer = getReportVal(report, ["작성자"], "writer") || "민준";
      const rawDate = getReportVal(report, ["날짜"], "date");
+     const content = getReportVal(report, ["생각", "느낀점", "느낀 점", "내용"], "content") || "";
+
+     // Detect English: if more than 20% of content is English letters
+     const englishChars = content.match(/[a-zA-Z]/g) || [];
+     const isEnglish = englishChars.length > content.length * 0.2;
+     setIsEnglishMode(isEnglish);
 
      let formattedDate = toLocalISOString(rawDate) || toLocalISOString();
 
@@ -780,6 +786,57 @@ export default function DashboardPage() {
                                  </div>
                               </div>
                           </div>
+
+                          {/* Dictionary Helper in Review View */}
+                          <div className="space-y-6 pt-8 border-t border-olive/5">
+                              <h4 className="flex items-center gap-2 font-black text-text-main text-lg tracking-tight">
+                                 <Languages className="text-accent" size={20} /> 단어/문장 사전 도우미 📖
+                              </h4>
+                              <div className="bg-background-warm/50 p-6 md:p-8 rounded-[2.5rem] border border-olive/10 space-y-4">
+                                 <div className="flex gap-2">
+                                    <input 
+                                       type="text" 
+                                       value={translationInput} 
+                                       onChange={(e) => setTranslationInput(e.target.value)}
+                                       onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                             e.preventDefault();
+                                             handleTranslate(e as any);
+                                          }
+                                       }}
+                                       placeholder="궁금한 단어나 문장을 적어보세요" 
+                                       className="flex-1 px-5 py-3 bg-white rounded-2xl border border-olive/5 focus:outline-none text-xs font-bold shadow-sm"
+                                    />
+                                    <button 
+                                       type="button" 
+                                       onClick={(e) => handleTranslate(e as any)}
+                                       disabled={isTranslating}
+                                       className="px-6 py-3 bg-accent text-white font-black rounded-2xl text-[10px] shadow-lg shadow-accent/20 active:scale-95 transition-all"
+                                    >
+                                       {isTranslating ? "찾는 중..." : "찾기"}
+                                    </button>
+                                 </div>
+                                 
+                                 {translationResult && Array.isArray(translationResult) && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                                       {translationResult.map((item, i) => (
+                                          <div key={i} className="p-6 bg-white rounded-[2rem] border border-accent/10 shadow-xl shadow-accent/5 space-y-3 relative overflow-hidden">
+                                             <div className="flex justify-between items-start relative z-10">
+                                                <div>
+                                                   <h5 className="text-xl font-black text-accent tracking-tight">{item.word}</h5>
+                                                   <p className="text-sm font-bold text-olive/60">{item.meaning}</p>
+                                                </div>
+                                             </div>
+                                             <div className="p-4 bg-background-warm rounded-2xl border border-olive/5 relative z-10">
+                                                <p className="text-xs font-bold text-text-main leading-relaxed mb-1 italic">"{item.example}"</p>
+                                                <p className="text-[10px] font-medium text-olive/40">{item.exampleKo}</p>
+                                             </div>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
+                          </div>
                           
                           {/* Quiz Results Section */}
                           {getReportVal(selectedReport, ["퀴즈", "점수"], "quizScore") ? (
@@ -900,13 +957,30 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-primary/40 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-background-warm w-full h-full md:h-auto md:max-w-6xl md:max-h-[95vh] md:rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
             <div className="px-6 py-4 md:px-12 md:py-4 border-b border-olive/5 flex items-center justify-between bg-white/50 backdrop-blur-md sticky top-0 z-20">
-              <div className="flex items-center gap-2">
-                 <div className={cn("p-1.5 rounded-lg text-white", isEnglishMode ? "bg-accent" : "bg-primary")}>
-                    {isEnglishMode ? <Languages size={16} /> : <SquarePen size={16} />}
-                 </div>
-                 <h2 className="text-lg md:text-xl font-black text-text-main tracking-tighter">
-                    {isEnglishMode ? "English Reading Journal" : (formData.originalTitle ? "기록 다듬기" : "새로운 시작하기")}
-                 </h2>
+              <div className="flex items-center gap-2 md:gap-6">
+                <div className="flex items-center gap-2">
+                   <div className={cn("p-1.5 rounded-lg text-white", isEnglishMode ? "bg-accent" : "bg-primary")}>
+                      {isEnglishMode ? <Languages size={16} /> : <SquarePen size={16} />}
+                   </div>
+                   <h2 className="text-lg md:text-xl font-black text-text-main tracking-tighter">
+                      {isEnglishMode ? "English Reading Journal" : (formData.originalTitle ? "기록 다듬기" : "새로운 시작하기")}
+                   </h2>
+                </div>
+                
+                {/* Mode Toggle Button */}
+                <button 
+                  type="button"
+                  onClick={() => setIsEnglishMode(!isEnglishMode)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 border",
+                    isEnglishMode 
+                      ? "bg-primary/5 text-primary border-primary/10 hover:bg-primary/10" 
+                      : "bg-accent/5 text-accent border-accent/10 hover:bg-accent/10"
+                  )}
+                >
+                  {isEnglishMode ? <SquarePen size={12} /> : <Languages size={12} />}
+                  {isEnglishMode ? "일반 모드로 전환" : "영어 모드로 전환"}
+                </button>
               </div>
               <button onClick={closeModal} className="p-2 bg-white/50 rounded-xl text-olive/40 hover:text-error hover:bg-error/5 transition-all active:scale-90"><X size={20} /></button>
             </div>
